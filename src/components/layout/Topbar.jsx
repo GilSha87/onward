@@ -1,7 +1,7 @@
 import React from 'react';
 import { ICONS } from '../../lib/data';
 
-export default function Topbar({ view, setView, screen, setScreen, client, amName = 'Maya Levin', amInitials }) {
+export default function Topbar({ view, setView, screen, setScreen, client, amName = 'Maya Levin', amInitials, onSignOut }) {
   const initials = amInitials || (amName || 'ML').split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const isSubpage = screen.kind === 'tracker' || screen.kind === 'plan' || screen.kind === 'client';
   return (
@@ -44,6 +44,11 @@ export default function Topbar({ view, setView, screen, setScreen, client, amNam
         <span className="avatar">{initials}</span>
         {amName}
       </span>
+      {onSignOut && (
+        <button className="btn ghost sm" style={{ marginLeft: 8 }} onClick={onSignOut}>
+          Sign out
+        </button>
+      )}
     </header>
   );
 }

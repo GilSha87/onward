@@ -34,9 +34,13 @@ function userFromSession(session) {
   return { name, initials };
 }
 
+const DEV = import.meta.env.DEV;
+
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [authed, setAuthed] = useState(!t.showLogin);
+  // In production, always require a real Supabase session. The showLogin tweak
+  // is a dev-only convenience and never bypasses auth in a production build.
+  const [authed, setAuthed] = useState(DEV ? !t.showLogin : false);
   const [view, setView] = useState(t.viewMode);
   const [screen, setScreen] = useState(() => {
     if (t.startScreen === 'tracker') return { kind: 'tracker', clientId: 'c1' };
@@ -64,8 +68,9 @@ export default function App() {
       if (session) {
         setAuthed(true);
         setCurrentUser(userFromSession(session));
-      } else if (t.showLogin) {
+      } else if (!DEV || t.showLogin) {
         setAuthed(false);
+        setCurrentUser({ name: 'Maya Levin', initials: 'ML' });
       }
     });
     return () => subscription.unsubscribe();
@@ -86,7 +91,7 @@ export default function App() {
   }, []);
 
   useEffect(() => { setView(t.viewMode); }, [t.viewMode]);
-  useEffect(() => { setAuthed(!t.showLogin); }, [t.showLogin]);
+  useEffect(() => { if (DEV) setAuthed(!t.showLogin); }, [t.showLogin]);
 
   // Apply density / accent / paper-tone CSS vars
   useEffect(() => {
@@ -203,6 +208,13 @@ export default function App() {
     setTeam(prev => prev.filter(m => m.id !== id));
   }
 
+  function signOut() {
+    db.auth.signOut().then(() => {
+      setAuthed(false);
+      setCurrentUser({ name: 'Maya Levin', initials: 'ML' });
+    });
+  }
+
   function addMember(member) {
     const name = (member.name || '').trim();
     if (!name) return;
@@ -243,6 +255,7 @@ export default function App() {
           client={client}
           amName={currentUser.name}
           amInitials={currentUser.initials}
+          onSignOut={signOut}
         />
       )}
       {isClientFacing && (
@@ -332,6 +345,7 @@ export default function App() {
         />
       )}
 
+      {DEV && (
       <TweaksPanel title="Tweaks">
         <TweakSection label="Try a screen">
           <TweakSelect value={effectiveScreen.kind} onChange={v => {
@@ -361,6 +375,7 @@ export default function App() {
           <TweakRadio value={t.paperTone} onChange={v => setTweak('paperTone', v)} options={[{ value: 'warm', label: 'Warm' }, { value: 'crisp', label: 'Crisp' }, { value: 'cool', label: 'Cool' }]} />
         </TweakSection>
       </TweaksPanel>
+      )}
     </>
   );
 }
