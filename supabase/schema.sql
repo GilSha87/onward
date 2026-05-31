@@ -1,61 +1,79 @@
--- Onward — Supabase schema
--- Run this in the Supabase SQL editor (or via the CLI) to provision the
--- tables the app reads/writes. Column names match src/lib/dbMapper.js.
+-- Onward — Supabase schema (complete, with user_id for RLS)
+-- Run this in Supabase SQL Editor to recreate tables correctly.
+-- WARNING: drops existing tables first — back up any real data.
 
--- ---------------------------------------------------------------------------
--- clients
--- ---------------------------------------------------------------------------
-create table if not exists public.clients (
-  id             uuid primary key default gen_random_uuid(),
-  name           text not null,
-  icp            text,
-  flow           text,
-  touch          text,
-  country        text,
-  flag           text,
-  lang           text,
-  color          text,
-  mono           text,
-  kickoff        text,
-  am             text,
-  day_in         integer default 0,
-  phase          text,
-  status         text default 'active',
-  contacts       jsonb default '[]'::jsonb,
-  progress_done  integer default 0,
-  progress_total integer default 20,
-  created_at     timestamptz default now()
-);
+-- ============================================================
+-- Drop & recreate clients
+-- ============================================================
+drop table if exists public.steps cascade;
+drop table if exists public.clients cascade;
 
--- ---------------------------------------------------------------------------
--- steps  (one row per onboarding step, owned by a client)
--- ---------------------------------------------------------------------------
-create table if not exists public.steps (
-  id         uuid primary key default gen_random_uuid(),
-  client_id  uuid not null references public.clients(id) on delete cascade,
-  phase      text,
-  title      text not null,
-  why        text default '',
-  owner      text,
-  prio       text,
-  status     text default 'not',
-  "start"    integer default 0,
-  due        integer default 0,
-  created_at timestamptz default now()
-);
+create table public.clients (
+    id             uuid primary key default gen_random_uuid(),
+    user_id        uuid not null references auth.users(id) on delete cascade,
+    name           text not null,
+    icp            text,
+    flow           text,
+    touch          text,
+    country        text,
+    flag           text,
+    lang           text,
+    color          text,
+    mono           text,
+    kickoff        text,
+    am             text,
+    day_in         integer default 0,
+    phase          text,
+    status         text default 'active',
+    contacts       jsonb default '[]'::jsonb,
+    progress_done  integer default 0,
+    progress_total integer default 20,
+    created_at     timestamptz default now()
+  );
 
-create index if not exists steps_client_id_idx on public.steps (client_id);
+-- ============================================================
+-- Drop & recreate steps
+-- ============================================================
+create table public.steps (
+    id          uuid primary key default gen_random_uuid(),
+    client_id   uuid not null references public.clients(id) on delete cascade,
+    user_id     uuid not null references auth.users(id) on delete cascade,
+    phase       text,
+    title       text not null,
+    why         text,
+    owner       text,
+    prio        text,
+    status      text default 'not',
+    start       integer default 0,
+    due         integer default 0,
+    created_at  timestamptz default now()
+  );
 
--- ---------------------------------------------------------------------------
--- Row Level Security
--- Enable RLS and allow authenticated users full access. Tighten these
--- policies (e.g. scope by `am` / auth.uid()) before production use.
--- ---------------------------------------------------------------------------
+-- ============================================================
+-- Enable Row-Level Security
+-- ============================================================
 alter table public.clients enable row level security;
 alter table public.steps   enable row level security;
 
-create policy "clients_authenticated_all" on public.clients
-  for all to authenticated using (true) with check (true);
+-- ============================================================
+-- RLS policies — clients
+-- ============================================================
+create policy "clients_select" on public.clients for select using (auth.uid() = user_id);
+create policy "clients_insert" on public.clients for insert with check (auth.uid() = user_id);
+create policy "clients_update" on public.clients for update using (auth.uid() = user_id);
+create policy "clients_delete" on public.clients for delete using (auth.uid() = user_id);
 
-create policy "steps_authenticated_all" on public.steps
-  for all to authenticated using (true) with check (true);
+-- ============================================================
+-- RLS policies — steps
+-- ============================================================
+create policy "steps_select" on public.steps for select using (auth.uid() = user_id);
+create policy "steps_insert" on public.steps for insert with check (auth.uid() = user_id);
+create policy "steps_update" on public.steps for update using (auth.uid() = user_id);
+create policy "steps_delete" on public.steps for delete using (auth.uid() = user_id);
+
+-- ============================================================
+-- Indexes
+-- ============================================================
+create index clients_user_id_idx on public.clients(user_id);
+create index steps_client_id_idx on public.steps(client_id);
+create index steps_user_id_idx   on public.steps(user_id);
