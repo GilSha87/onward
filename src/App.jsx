@@ -81,11 +81,11 @@ export default function App() {
     db.from('clients').select('*').then(({ data, error }) => {
       if (error) {
         console.error('Supabase load error:', error.message);
-        setClients([]));
+        setClients([]);
       } else if (data && data.length > 0) {
         setClients(data.map(dbRowToClient));
       } else {
-        setClients([]));
+        setClients([]);
       }
     });
   }, []);
