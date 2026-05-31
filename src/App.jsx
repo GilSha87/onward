@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/supabase';
-import { SAMPLE_CLIENTS, SAMPLE_STEPS, TEAM } from './lib/data';
+import { TEAM } from './lib/data';
 import { dbRowToClient, clientToDbRow, dbRowToStep, stepToDbRow } from './lib/dbMapper';
 import { TweaksPanel, TweakSection, TweakToggle, TweakRadio, TweakColor, TweakSelect, useTweaks } from './components/TweaksPanel';
 import Topbar from './components/layout/Topbar';
 import Dashboard from './pages/Dashboard';
 import Tracker from './pages/Tracker';
 import PlanView from './pages/PlanView';
-import ClientView from './pages/ClientView';
+import ClientView from './pages/ClientView'
 import TeamPage from './pages/TeamPage';
 import Login from './pages/Login';
 import AddClientModal from './modals/AddClientModal';
@@ -81,11 +81,11 @@ export default function App() {
     db.from('clients').select('*').then(({ data, error }) => {
       if (error) {
         console.error('Supabase load error:', error.message);
-        setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
+        setClients([]));
       } else if (data && data.length > 0) {
         setClients(data.map(dbRowToClient));
       } else {
-        setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
+        setClients([]));
       }
     });
   }, []);
@@ -137,11 +137,11 @@ export default function App() {
     db.from('steps').select('*').eq('client_id', clientId).then(({ data, error }) => {
       if (error) {
         console.error('Steps load error:', error.message);
-        setStepsByClient(prev => ({ ...prev, [clientId]: SAMPLE_STEPS }));
+        setStepsByClient(prev => ({ ...prev, [clientId]: [] }));
       } else if (data && data.length > 0) {
         setStepsByClient(prev => ({ ...prev, [clientId]: data.map(dbRowToStep) }));
       } else {
-        setStepsByClient(prev => ({ ...prev, [clientId]: SAMPLE_STEPS }));
+        setStepsByClient(prev => ({ ...prev, [clientId]: [] }));
       }
     });
   }
@@ -173,7 +173,7 @@ export default function App() {
 
   function toggleStep(clientId, stepId) {
     setStepsByClient(prev => {
-      const clientSteps = prev[clientId] || SAMPLE_STEPS;
+      const clientSteps = prev[clientId] || [];
       const updated = clientSteps.map(s =>
         s.id === stepId ? { ...s, status: s.status === 'done' ? 'not' : 'done' } : s
       );
@@ -190,7 +190,7 @@ export default function App() {
     if (updated._delete) {
       setStepsByClient(prev => ({
         ...prev,
-        [clientId]: (prev[clientId] || SAMPLE_STEPS).filter(s => s.id !== updated.id),
+        [clientId]: (prev[clientId] || []).filter(s => s.id !== updated.id),
       }));
       db.from('steps').delete().eq('id', updated.id)
         .then(({ error }) => { if (error) console.error('Steps delete error:', error.message); });
@@ -198,7 +198,7 @@ export default function App() {
     }
     setStepsByClient(prev => ({
       ...prev,
-      [clientId]: (prev[clientId] || SAMPLE_STEPS).map(s => s.id === updated.id ? updated : s),
+      [clientId]: (prev[clientId] || []).map(s => s.id === updated.id ? updated : s),
     }));
     db.from('steps').update(stepToDbRow(updated, clientId)).eq('id', updated.id)
       .then(({ error }) => { if (error) console.error('Steps save error:', error.message); });
@@ -242,7 +242,7 @@ export default function App() {
   const effectiveScreen = (view === 'client' && screen.kind === 'tracker') ? { ...screen, kind: 'client' }
     : (view === 'am' && screen.kind === 'client') ? { ...screen, kind: 'tracker' } : screen;
   const isClientFacing = effectiveScreen.kind === 'client';
-  const clientSteps = client ? (stepsByClient[client.id] || SAMPLE_STEPS) : SAMPLE_STEPS;
+  const clientSteps = client ? (stepsByClient[client.id] || []) : [];
 
   return (
     <>
@@ -320,12 +320,12 @@ export default function App() {
             } else {
               resolvedClient = dbRowToClient(data);
               setClients(prev => [...prev, resolvedClient]);
-              const stepsToInsert = SAMPLE_STEPS.map(s => stepToDbRow(s, resolvedClient.id));
+              const stepsToInsert = [].map(s => stepToDbRow(s, resolvedClient.id));
               const { error: stepsErr } = await db.from('steps').insert(stepsToInsert);
               if (stepsErr) console.error('Steps insert error:', stepsErr.message);
             }
             loadedClients.current.add(resolvedClient.id);
-            setStepsByClient(prev => ({ ...prev, [resolvedClient.id]: SAMPLE_STEPS }));
+            setStepsByClient(prev => ({ ...prev, [resolvedClient.id]: [] }));
             setScreen({ kind: 'tracker', clientId: resolvedClient.id });
             setModal(null);
           }}
