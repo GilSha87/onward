@@ -1,14 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
+import { initMonitoring } from './lib/monitoring';
 import './index.css';
-import { initMonitor } from './lib/monitor';
 
 // Initialise error & API-failure instrumentation before the React tree mounts.
-initMonitor();
+initMonitoring();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );

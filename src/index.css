@@ -10,8 +10,10 @@
 
 :root {
   /* ── Duda brand ── */
-  --duda:           #FB673E;     /* primary coral-orange */
+  --duda:           #FB673E;     /* primary coral-orange (accents, non-text) */
   --duda-deep:      #E54E25;
+  --duda-btn:       #CC4318;     /* accessible coral for white-text buttons (≈4.8:1) */
+  --duda-btn-deep:  #B23A14;     /* hover for accessible coral button */
   --duda-soft:      #FFEDE5;
   --duda-tint:      #FFF6F1;
   --duda-ink:       #6E2916;     /* readable on soft */
@@ -320,14 +322,16 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
 .btn:active { transform: translateY(0); }
 
 .btn.primary {
-  background: var(--duda);
+  /* --duda-btn meets WCAG AA (4.5:1) for white text; brand coral --duda
+     stays for non-text accents where contrast rules don't apply. */
+  background: var(--duda-btn);
   color: #fff;
-  border-color: var(--duda);
+  border-color: var(--duda-btn);
   box-shadow: 0 1px 2px rgba(251,103,62,.3);
 }
 .btn.primary:hover {
-  background: var(--duda-deep);
-  border-color: var(--duda-deep);
+  background: var(--duda-btn-deep);
+  border-color: var(--duda-btn-deep);
   box-shadow: 0 4px 12px rgba(251,103,62,.35);
 }
 

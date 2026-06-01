@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/supabase';
-import { TEAM } from './lib/data';
+import { TEAM, SAMPLE_CLIENTS, SAMPLE_STEPS } from './lib/data';
 import { dbRowToClient, clientToDbRow, dbRowToStep, stepToDbRow } from './lib/dbMapper';
+import { reportApiError } from './lib/monitoring';
 import { TweaksPanel, TweakSection, TweakToggle, TweakRadio, TweakColor, TweakSelect, useTweaks } from './components/TweaksPanel';
 import Topbar from './components/layout/Topbar';
 import Dashboard from './pages/Dashboard';
@@ -54,6 +55,8 @@ export default function App() {
   const [stepsByClient, setStepsByClient] = useState({});
   const [team, setTeam] = useState(TEAM);
   const [currentUser, setCurrentUser] = useState({ name: 'Maya Levin', initials: 'ML' });
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [apiNotice, setApiNotice] = useState(null);
   const loadedClients = useRef(new Set());
 
   // Check Supabase auth session on mount
@@ -80,14 +83,19 @@ export default function App() {
   useEffect(() => {
     db.from('clients').select('*').then(({ data, error }) => {
       if (error) {
-        console.error('Supabase load error:', error.message);
-        setClients([]);
+        reportApiError('clients.select', error);
+        setApiNotice("We couldn't load your live clients, so you're seeing sample data.");
+        setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
       } else if (data && data.length > 0) {
         setClients(data.map(dbRowToClient));
       } else {
         setClients([]);
       }
-    });
+    }).catch((error) => {
+      reportApiError('clients.select', error);
+      setApiNotice("We couldn't load your live clients, so you're seeing sample data.");
+      setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
+    }).finally(() => setLoadingClients(false));
   }, []);
 
   useEffect(() => { setView(t.viewMode); }, [t.viewMode]);
@@ -136,8 +144,8 @@ export default function App() {
     loadedClients.current.add(clientId);
     db.from('steps').select('*').eq('client_id', clientId).then(({ data, error }) => {
       if (error) {
-        console.error('Steps load error:', error.message);
-        setStepsByClient(prev => ({ ...prev, [clientId]: [] }));
+        reportApiError('steps.select', error, { clientId });
+        setStepsByClient(prev => ({ ...prev, [clientId]: SAMPLE_STEPS }));
       } else if (data && data.length > 0) {
         setStepsByClient(prev => ({ ...prev, [clientId]: data.map(dbRowToStep) }));
       } else {
@@ -166,7 +174,7 @@ export default function App() {
     });
     if (Object.keys(dbUpdates).length > 0) {
       db.from('clients').update(dbUpdates).eq('id', id).then(({ error }) => {
-        if (error) console.error('Supabase update error:', error.message);
+        if (error) reportApiError('clients.update', error, { id });
       });
     }
   }
@@ -180,7 +188,7 @@ export default function App() {
       const step = updated.find(s => s.id === stepId);
       if (step) {
         db.from('steps').update({ status: step.status }).eq('id', stepId)
-          .then(({ error }) => { if (error) console.error('Steps toggle error:', error.message); });
+          .then(({ error }) => { if (error) reportApiError('steps.toggle', error, { stepId }); });
       }
       return { ...prev, [clientId]: updated };
     });
@@ -193,7 +201,7 @@ export default function App() {
         [clientId]: (prev[clientId] || []).filter(s => s.id !== updated.id),
       }));
       db.from('steps').delete().eq('id', updated.id)
-        .then(({ error }) => { if (error) console.error('Steps delete error:', error.message); });
+        .then(({ error }) => { if (error) reportApiError('steps.delete', error, { stepId: updated.id }); });
       return;
     }
     setStepsByClient(prev => ({
@@ -201,7 +209,7 @@ export default function App() {
       [clientId]: (prev[clientId] || []).map(s => s.id === updated.id ? updated : s),
     }));
     db.from('steps').update(stepToDbRow(updated, clientId)).eq('id', updated.id)
-      .then(({ error }) => { if (error) console.error('Steps save error:', error.message); });
+      .then(({ error }) => { if (error) reportApiError('steps.update', error, { stepId: updated.id }); });
   }
 
   function deleteMember(id) {
@@ -246,6 +254,28 @@ export default function App() {
 
   return (
     <>
+      {apiNotice && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+            padding: '8px 16px', fontSize: 13, fontWeight: 500,
+            background: '#FFF3E9', color: '#8A3D1E',
+            borderBottom: '1px solid #F3D6C2',
+            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          }}
+        >
+          <span>{apiNotice}</span>
+          <button
+            onClick={() => setApiNotice(null)}
+            aria-label="Dismiss notice"
+            style={{ border: 'none', background: 'transparent', color: '#8A3D1E', fontWeight: 700, cursor: 'pointer', fontSize: 15, lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {!isClientFacing && (
         <Topbar
           view={view}
@@ -267,7 +297,19 @@ export default function App() {
         </div>
       )}
 
-      {effectiveScreen.kind === 'dashboard' && (
+      {effectiveScreen.kind === 'dashboard' && loadingClients && clients.length === 0 && (
+        <div
+          role="status"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            minHeight: '60vh', fontSize: 14, opacity: 0.6,
+            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          }}
+        >
+          Loading clients…
+        </div>
+      )}
+      {effectiveScreen.kind === 'dashboard' && !(loadingClients && clients.length === 0) && (
         <Dashboard
           clients={clients}
           setScreen={setScreen}
@@ -314,7 +356,7 @@ export default function App() {
             const { data, error } = await db.from('clients').insert(clientToDbRow(newClient)).select().single();
             let resolvedClient;
             if (error) {
-              console.error('Supabase insert error:', error.message);
+              reportApiError('clients.insert', error);
               resolvedClient = { ...newClient, id: newClient.id || ('c' + Math.random().toString(36).slice(2, 8)) };
               setClients(prev => [...prev, resolvedClient]);
             } else {
@@ -322,7 +364,7 @@ export default function App() {
               setClients(prev => [...prev, resolvedClient]);
               const stepsToInsert = [].map(s => stepToDbRow(s, resolvedClient.id));
               const { error: stepsErr } = await db.from('steps').insert(stepsToInsert);
-              if (stepsErr) console.error('Steps insert error:', stepsErr.message);
+              if (stepsErr) reportApiError('steps.insert', stepsErr, { clientId: resolvedClient.id });
             }
             loadedClients.current.add(resolvedClient.id);
             setStepsByClient(prev => ({ ...prev, [resolvedClient.id]: [] }));
