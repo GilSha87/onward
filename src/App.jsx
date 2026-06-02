@@ -30,12 +30,12 @@ const TWEAK_DEFAULTS = {
 
 function userFromSession(session) {
   const u = session?.user;
-  if (!u) return { name: 'Maya Levin', initials: 'ML' };
-  const name = u.user_metadata?.full_name || u.email || 'Maya Levin';
+  if (!u) return { name: '', initials: '—' };
+  const name = u.user_metadata?.full_name || u.email || '';
   const parts = name.split(' ').filter(Boolean);
   const initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase();
+    : name.slice(0, 2).toUpperCase() || '—';
   return { name, initials };
 }
 
@@ -58,7 +58,7 @@ export default function App() {
   const [clients, setClients] = useState([]);
   const [stepsByClient, setStepsByClient] = useState({});
   const [team, setTeam] = useState([]);
-  const [currentUser, setCurrentUser] = useState({ name: 'Maya Levin', initials: 'ML' });
+  const [currentUser, setCurrentUser] = useState({ name: '', initials: '—' });
   const [loadingClients, setLoadingClients] = useState(true);
   const [apiNotice, setApiNotice] = useState(null);
   const loadedClients = useRef(new Set());
@@ -77,7 +77,7 @@ export default function App() {
         setCurrentUser(userFromSession(session));
       } else if (!DEV || t.showLogin) {
         setAuthed(false);
-        setCurrentUser({ name: 'Maya Levin', initials: 'ML' });
+        setCurrentUser({ name: '', initials: '—' });
       }
     });
     return () => subscription.unsubscribe();
@@ -263,16 +263,22 @@ export default function App() {
 
   function deleteMember(id) {
     setTeam(prev => prev.filter(m => m.id !== id));
+    db.from('team_members').delete().eq('id', id).then(({ error }) => {
+      if (error) {
+        reportApiError('team_members.delete', error, { id });
+        showToast('Failed to remove team member.', 'error');
+      }
+    });
   }
 
   function signOut() {
     db.auth.signOut().then(() => {
       setAuthed(false);
-      setCurrentUser({ name: 'Maya Levin', initials: 'ML' });
+      setCurrentUser({ name: '', initials: '—' });
     });
   }
 
-  function addMember(member) {
+  async function addMember(member) {
     const name = (member.name || '').trim();
     if (!name) return;
     const parts = name.split(' ').filter(Boolean);
@@ -280,11 +286,14 @@ export default function App() {
       ? parts[0][0] + parts[parts.length - 1][0]
       : name.slice(0, 2)).toUpperCase();
     const colors = ['#1F3A5F', '#5C6B4A', '#B8543A', '#4F5A66', '#1A1714'];
+    const tempId = 't' + Date.now();
+    const email = (member.email || '').trim();
+    const role = member.role || 'Staff';
     setTeam(prev => [...prev, {
-      id: 't' + (Date.now()),
+      id: tempId,
       name,
-      email: (member.email || '').trim(),
-      role: member.role || 'Staff',
+      email,
+      role,
       status: 'invited',
       mono,
       initials: mono,
@@ -293,6 +302,20 @@ export default function App() {
       resolved: 0,
       color: colors[prev.length % colors.length],
     }]);
+    // The invite-team-member Edge Function already inserted this row
+    // (with user_id + invited_by, which RLS requires). Don't insert again —
+    // just reconcile our optimistic row with the canonical DB row.
+    const { data, error } = await db.from('team_members')
+      .select('id, status')
+      .eq('email', email)
+      .maybeSingle();
+    if (error) {
+      reportApiError('team_members.select', error);
+    } else if (data) {
+      setTeam(prev => prev.map(m => m.id === tempId
+        ? { ...m, id: data.id, status: data.status || 'invited' }
+        : m));
+    }
   }
 
   // Public, unauthenticated share route: /plan/:token. Rendered before the auth
@@ -429,7 +452,12 @@ export default function App() {
             }
             const resolvedClient = dbRowToClient(data);
             setClients(prev => [...prev, resolvedClient]);
-            const baseSteps = SAMPLE_STEPS.filter(s => !c.excludedSteps?.includes(s.id));
+            const baseSteps = SAMPLE_STEPS.filter(s => {
+              if (c.excludedSteps?.includes(s.id)) return false;
+              const flowOk = !s.flows || s.flows.includes('All') || s.flows.includes(c.flow);
+              const segOk = !s.segments || s.segments.includes('All') || s.segments.includes(c.icp);
+              return flowOk && segOk;
+            });
             const allSteps = [...baseSteps, ...(c.customSteps || [])];
             const stepsToInsert = allSteps.map(s => stepToDbRow(s, resolvedClient.id, userId));
             if (stepsToInsert.length > 0) {

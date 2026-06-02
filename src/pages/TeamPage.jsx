@@ -3,6 +3,8 @@ import { ICONS } from '../lib/data';
 import Dropdown from '../components/ui/Dropdown';
 
 export default function TeamPage({ team, onAdd, onDeleteMember }) {
+  const [deleteId, setDeleteId] = React.useState(null);
+
   return (
     <main className="canvas">
       <section style={{ paddingBottom: 24, borderBottom: '1px solid var(--hairline)', marginBottom: 32 }}>
@@ -25,11 +27,22 @@ export default function TeamPage({ team, onAdd, onDeleteMember }) {
               </div>
               {t.role !== 'Staff' && <span className="tag">{t.role === 'Admin' ? 'ADMIN' : 'EXEC'}</span>}
               <Dropdown items={[
-                { label: 'Edit member', onClick: () => alert('Edit — coming soon') },
-                null,
-                { label: 'Remove from team', danger: true, onClick: () => { if (window.confirm('Remove ' + t.name + '?')) onDeleteMember(t.id); } },
+                { label: 'Remove from team', danger: true, onClick: () => setDeleteId(t.id) },
               ]} />
             </div>
+            {deleteId === t.id && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 2px', borderTop: '1px solid var(--hairline-soft)', marginTop: 8 }}>
+                <span className="text-xs muted" style={{ flex: 1 }}>Remove {t.name}?</span>
+                <button
+                  className="btn sm"
+                  style={{ color: 'var(--duda)', borderColor: 'var(--duda)' }}
+                  onClick={() => { onDeleteMember(t.id); setDeleteId(null); }}
+                >
+                  Remove
+                </button>
+                <button className="btn sm ghost" onClick={() => setDeleteId(null)}>Cancel</button>
+              </div>
+            )}
             <div className="stats">
               <div className="stat"><div className="n tabnum">{t.clients}</div><div className="l">Clients</div></div>
               <div className="stat"><div className="n tabnum">{t.open}</div><div className="l">Open</div></div>

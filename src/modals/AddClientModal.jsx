@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { SAMPLE_STEPS, ICONS } from '../lib/data';
+import React, { useState, useRef, useEffect } from 'react';
+import { SAMPLE_STEPS, FLOWS, SEGMENTS, ICONS } from '../lib/data';
 import { db } from '../lib/supabase';
+import { showToast } from '../components/ui/Toast';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
 import ContactEntry from './ContactEntry';
@@ -29,6 +30,9 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
   ]);
   const [excludedSteps, setExcludedSteps] = useState([]);
   const [customSteps, setCustomSteps] = useState([]);
+
+  // Reset step selections when ICP or flow changes so stale exclusions don't carry over
+  useEffect(() => { setExcludedSteps([]); setCustomSteps([]); }, [icp, flow]);
   const [logo, setLogo] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef(null);
@@ -46,11 +50,11 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
   async function handleLogoFile(file) {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, SVG, or WebP).');
+      showToast('Please upload an image file (PNG, JPG, SVG, or WebP).', 'error');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      alert('Logo must be under 2 MB.');
+      showToast('Logo must be under 2 MB.', 'error');
       return;
     }
     setLogoUploading(true);
@@ -69,19 +73,23 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
         .createSignedUrl(path, 31536000); // 1-year signed URL
       if (urlData?.signedUrl) setLogo(urlData.signedUrl);
     } catch {
-      alert('Logo upload failed. You can paste a URL instead.');
+      showToast('Logo upload failed. You can paste a URL instead.', 'error');
     } finally {
       setLogoUploading(false);
     }
   }
 
   function handleSave() {
-    if (!name.trim()) { alert('Please enter a company name.'); return; }
+    if (!name.trim()) { showToast('Please enter a company name.', 'error'); return; }
     const mono = name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '??';
     const flagParts = country.match(/^(\S+)\s+(.+)/);
     const flag = flagParts ? flagParts[1] : '🌐';
     const countryName = flagParts ? flagParts[2] : country;
-    const included = SAMPLE_STEPS.length - excludedSteps.length + customSteps.length;
+    const included = SAMPLE_STEPS.filter(s => {
+      const flowOk = !s.flows || s.flows.includes('All') || s.flows.includes(flow);
+      const segOk = !s.segments || s.segments.includes('All') || s.segments.includes(icp);
+      return flowOk && segOk && !excludedSteps.includes(s.id);
+    }).length + customSteps.length;
     const amName = currentUser?.name || 'Account Manager';
     if (onSave) {
       onSave({
@@ -191,7 +199,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
             <div className="field">
               <label>ICP *</label>
               <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                {['Agency', 'SaaS Platform', 'Hosting', 'Listing / YP', 'POS / eCommerce'].map(o => (
+                {SEGMENTS.map(o => (
                   <button key={o} type="button" className={`btn sm ${icp === o ? 'primary' : ''}`} onClick={() => setIcp(o)}>{o}</button>
                 ))}
               </div>
@@ -199,7 +207,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
             <div className="field">
               <label>Build flow *</label>
               <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                {['DIFM', 'DIY', 'Hybrid', 'Migration', 'Marketplace'].map(o => (
+                {FLOWS.map(o => (
                   <button key={o} type="button" className={`btn sm ${flow === o ? 'primary' : ''}`} onClick={() => setFlow(o)}>{o}</button>
                 ))}
               </div>
@@ -349,7 +357,11 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
       </div>
 
       <div className="modal-foot">
-        <span className="muted text-xs">{name ? <><b>{name}</b> · {contacts.filter(c => c.name).length} contacts · {SAMPLE_STEPS.length - excludedSteps.length + customSteps.length} steps</> : 'Fill in client info above'}</span>
+        <span className="muted text-xs">{name ? <><b>{name}</b> · {contacts.filter(c => c.name).length} contacts · {SAMPLE_STEPS.filter(s => {
+          const flowOk = !s.flows || s.flows.includes('All') || s.flows.includes(flow);
+          const segOk = !s.segments || s.segments.includes('All') || s.segments.includes(icp);
+          return flowOk && segOk && !excludedSteps.includes(s.id);
+        }).length + customSteps.length} steps</> : 'Fill in client info above'}</span>
         <div className="flex gap-2">
           <button className="btn" onClick={onClose}>Cancel</button>
           {tab !== 'info' && <button className="btn" onClick={() => setTab(tab === 'contacts' ? 'info' : tab === 'brand' ? 'contacts' : 'brand')}>{ICONS.arrowL} Back</button>}

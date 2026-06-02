@@ -4,6 +4,13 @@ import PrioPill from '../components/ui/PrioPill';
 
 export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSteps, customSteps, setCustomSteps, icp, flow }) {
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Filter to only steps applicable to the selected flow and segment
+  const filteredSteps = steps.filter(s => {
+    const flowOk = !s.flows || s.flows.includes('All') || s.flows.includes(flow);
+    const segOk = !s.segments || s.segments.includes('All') || s.segments.includes(icp);
+    return flowOk && segOk;
+  });
   const [newTitle, setNewTitle] = useState('');
   const [newWhy, setNewWhy] = useState('');
   const [newOwner, setNewOwner] = useState('Both');
@@ -34,7 +41,7 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
     setCustomSteps(customSteps.filter(s => s.id !== id));
   }
 
-  const included = steps.length - excludedSteps.length + customSteps.length;
+  const included = filteredSteps.filter(s => !excludedSteps.includes(s.id)).length + customSteps.length;
 
   return (
     <div>
@@ -106,7 +113,7 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
 
       <div style={{ maxHeight: 320, overflow: 'auto', border: '1px solid var(--hairline)', borderRadius: 8, background: 'var(--surface)' }}>
         {PHASES.map(p => {
-          const phaseSteps = steps.filter(s => s.phase === p.id);
+          const phaseSteps = filteredSteps.filter(s => s.phase === p.id);
           const excludedCount = phaseSteps.filter(s => excludedSteps.includes(s.id)).length;
           return (
             <div key={p.id}>

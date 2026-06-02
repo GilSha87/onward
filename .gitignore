@@ -11,3 +11,6 @@ npm-debug.log*
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Supabase CLI local state
+supabase/.temp/

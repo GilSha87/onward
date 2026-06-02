@@ -6,7 +6,16 @@ import StatusBadge from '../components/ui/StatusBadge';
 import MiniJourney from '../components/ui/MiniJourney';
 import Dropdown from '../components/ui/Dropdown';
 
-export default function Dashboard({ clients, setScreen, onAddClient, onEditClient, amName = 'Maya Levin' }) {
+function currentSeason() {
+  const m = new Date().getMonth(); // 0 = Jan
+  const y = new Date().getFullYear();
+  if (m >= 2 && m <= 4) return `Spring ${y}`;
+  if (m >= 5 && m <= 7) return `Summer ${y}`;
+  if (m >= 8 && m <= 10) return `Fall ${y}`;
+  return `Winter ${y}`;
+}
+
+export default function Dashboard({ clients, setScreen, onAddClient, onEditClient, amName = '' }) {
   const [icp, setIcp] = useState('All');
   const [touch, setTouch] = useState('All');
   const [search, setSearch] = useState('');
@@ -86,14 +95,14 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
     <main className="canvas canvas-wide">
       <section className="dash-hero">
         <div>
-          <div className="eyebrow">{amName.split(' ')[0]}'s Portfolio · Spring 2026</div>
+          <div className="eyebrow">{amName ? `${amName.split(' ')[0]}'s Portfolio` : 'Portfolio'} · {currentSeason()}</div>
           <h1 className="display-1" style={{ marginTop: 12 }}>Onboarding, <em>at a glance.</em></h1>
           <p className="lede" style={{ marginTop: 16, maxWidth: 540 }}>
             {stats.total} accounts in flight.{stats.overdue > 0 ? ` ${stats.overdue} need a decision today.` : ' Everything green.'}
           </p>
         </div>
         <div className="dash-stats">
-          <div className="dash-stat"><div className="label">In flight</div><div className="value tabnum">{stats.total}</div><div className="delta">+1 this month</div></div>
+          <div className="dash-stat"><div className="label">In flight</div><div className="value tabnum">{stats.total}</div></div>
           <div className="dash-stat"><div className="label">Launched</div><div className="value tabnum">{stats.launched}</div><div className="delta">Phase 4</div></div>
           <div className="dash-stat"><div className="label">In setup</div><div className="value tabnum">{stats.inSetup}</div><div className="delta">Phases 1–2</div></div>
           <div className="dash-stat">
@@ -136,7 +145,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
             <kbd>⌘K</kbd>
           </span>
           <select className="input" style={{ width: 155 }} value={icp} onChange={e => setIcp(e.target.value)}>
-            <option>All</option><option>Agency</option><option>SaaS Platform</option><option>Hosting</option><option>Listing / YP</option><option>POS / eCommerce</option>
+            <option>All</option><option>Agency</option><option>SaaS</option><option>Hosting</option><option>Listing / YP</option><option>POS / eCommerce</option>
           </select>
           <div className="seg">
             <button className={touch === 'All' ? 'on' : ''} onClick={() => setTouch('All')}>All</button>
@@ -153,7 +162,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
 
       {showFilters && (
         <div className="filter-panel">
-          <div className="field"><label>Build flow</label><select className="input" value={flowFilter} onChange={e => setFlowFilter(e.target.value)}><option>All</option><option>DIFM</option><option>DIY</option><option>Hybrid</option><option>Migration</option><option>Marketplace</option></select></div>
+          <div className="field"><label>Build flow</label><select className="input" value={flowFilter} onChange={e => setFlowFilter(e.target.value)}><option>All</option><option>DIY</option><option>DIFM</option><option>Hybrid</option><option>Migration</option><option>Marketplace / Add-on</option></select></div>
           <div className="field"><label>Assigned AM</label><select className="input" value={amFilter} onChange={e => setAmFilter(e.target.value)}><option>All</option>{ams.map(a => <option key={a}>{a}</option>)}</select></div>
           <div className="flex items-end"><button className="btn sm ghost" onClick={clearFilters}>Clear all filters</button></div>
         </div>
