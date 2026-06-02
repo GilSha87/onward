@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/supabase';
-import { TEAM, SAMPLE_CLIENTS, SAMPLE_STEPS } from './lib/data';
+import { SAMPLE_CLIENTS, SAMPLE_STEPS } from './lib/data';
 import { dbRowToClient, clientToDbRow, dbRowToStep, stepToDbRow } from './lib/dbMapper';
 import { reportApiError } from './lib/monitoring';
+import ToastProvider, { showToast } from './components/ui/Toast';
 import { TweaksPanel, TweakSection, TweakToggle, TweakRadio, TweakColor, TweakSelect, useTweaks } from './components/TweaksPanel';
 import Topbar from './components/layout/Topbar';
 import Dashboard from './pages/Dashboard';
 import Tracker from './pages/Tracker';
 import PlanView from './pages/PlanView';
+import PublicPlanView from './pages/PublicPlanView';
 import ClientView from './pages/ClientView'
 import TeamPage from './pages/TeamPage';
 import Login from './pages/Login';
 import AddClientModal from './modals/AddClientModal';
 import EditStepModal from './modals/EditStepModal';
 import AddTeamModal from './modals/AddTeamModal';
+import SharePlanModal from './modals/SharePlanModal';
+import { tokenFromPath, setPlanStatus } from './lib/plan';
 
 const TWEAK_DEFAULTS = {
   showLogin: false,
@@ -53,7 +57,7 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [clients, setClients] = useState([]);
   const [stepsByClient, setStepsByClient] = useState({});
-  const [team, setTeam] = useState(TEAM);
+  const [team, setTeam] = useState([]);
   const [currentUser, setCurrentUser] = useState({ name: 'Maya Levin', initials: 'ML' });
   const [loadingClients, setLoadingClients] = useState(true);
   const [apiNotice, setApiNotice] = useState(null);
@@ -79,8 +83,9 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load clients from Supabase on mount
+  // Load clients from Supabase once authenticated
   useEffect(() => {
+    if (!authed) return;
     db.from('clients').select('*').then(({ data, error }) => {
       if (error) {
         reportApiError('clients.select', error);
@@ -96,7 +101,37 @@ export default function App() {
       setApiNotice("We couldn't load your live clients, so you're seeing sample data.");
       setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
     }).finally(() => setLoadingClients(false));
-  }, []);
+  }, [authed]);
+
+  // Load team members from Supabase
+  useEffect(() => {
+    if (!authed) return;
+    db.from('team_members').select('*').then(({ data, error }) => {
+      if (error) {
+        reportApiError('team_members.select', error);
+      } else {
+        setTeam((data || []).map(m => {
+          const parts = m.name.split(' ').filter(Boolean);
+          const mono = (parts.length >= 2
+            ? parts[0][0] + parts[parts.length - 1][0]
+            : m.name.slice(0, 2)).toUpperCase();
+          return {
+            id: m.id,
+            name: m.name,
+            email: m.email,
+            role: m.role,
+            status: m.status,
+            mono,
+            initials: mono,
+            clients: 0,
+            open: 0,
+            resolved: 0,
+            color: '#1F3A5F',
+          };
+        }));
+      }
+    });
+  }, [authed]);
 
   useEffect(() => { setView(t.viewMode); }, [t.viewMode]);
   useEffect(() => { if (DEV) setAuthed(!t.showLogin); }, [t.showLogin]);
@@ -169,12 +204,21 @@ export default function App() {
       dbUpdates.progress_total = updates.progress.total;
     }
     if ('contacts' in updates) dbUpdates.contacts = updates.contacts;
+    if ('mrr' in updates) dbUpdates.mrr_amount = updates.mrr;
+    if ('mrrCurrency' in updates) dbUpdates.mrr_currency = updates.mrrCurrency;
     ['name', 'icp', 'flow', 'touch', 'country', 'flag', 'lang', 'color', 'mono', 'kickoff', 'am', 'phase', 'status'].forEach(k => {
       if (k in updates) dbUpdates[k] = updates[k];
     });
+    if ('logoUrl' in updates)    dbUpdates.logo_url      = updates.logoUrl;
+    if ('sfId' in updates)       dbUpdates.sf_id         = updates.sfId;
+    if ('boxUrl' in updates)     dbUpdates.box_url       = updates.boxUrl;
+    if ('goLiveDate' in updates) dbUpdates.go_live_date  = updates.goLiveDate;
     if (Object.keys(dbUpdates).length > 0) {
       db.from('clients').update(dbUpdates).eq('id', id).then(({ error }) => {
-        if (error) reportApiError('clients.update', error, { id });
+        if (error) {
+          reportApiError('clients.update', error, { id });
+          showToast('Failed to save client changes.', 'error');
+        }
       });
     }
   }
@@ -188,7 +232,12 @@ export default function App() {
       const step = updated.find(s => s.id === stepId);
       if (step) {
         db.from('steps').update({ status: step.status }).eq('id', stepId)
-          .then(({ error }) => { if (error) reportApiError('steps.toggle', error, { stepId }); });
+          .then(({ error }) => {
+            if (error) {
+              reportApiError('steps.toggle', error, { stepId });
+              showToast('Failed to update step status.', 'error');
+            }
+          });
       }
       return { ...prev, [clientId]: updated };
     });
@@ -236,6 +285,7 @@ export default function App() {
       name,
       email: (member.email || '').trim(),
       role: member.role || 'Staff',
+      status: 'invited',
       mono,
       initials: mono,
       clients: 0,
@@ -244,6 +294,11 @@ export default function App() {
       color: colors[prev.length % colors.length],
     }]);
   }
+
+  // Public, unauthenticated share route: /plan/:token. Rendered before the auth
+  // guard so clients can review & approve a plan without an Onward account.
+  const publicToken = tokenFromPath();
+  if (publicToken) return <PublicPlanView token={publicToken} />;
 
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
 
@@ -254,6 +309,7 @@ export default function App() {
 
   return (
     <>
+      <ToastProvider />
       {apiNotice && (
         <div
           role="status"
@@ -334,6 +390,15 @@ export default function App() {
           client={client}
           editable={view === 'am'}
           onClose={() => setScreen({ kind: 'tracker', clientId: client.id })}
+          onShare={id => setModal({ kind: 'sharePlan', clientId: id })}
+          onReopen={async () => {
+            const ok = await setPlanStatus(client.id, 'sent').then(() => true, () => false);
+            if (ok) {
+              setClients(prev => prev.map(c => c.id === client.id
+                ? { ...c, planStatus: 'sent', planApprovedAt: null, planApprovedBy: null }
+                : c));
+            }
+          }}
         />
       )}
       {effectiveScreen.kind === 'client' && client && (
@@ -350,24 +415,34 @@ export default function App() {
 
       {modal?.kind === 'addClient' && (
         <AddClientModal
+          currentUser={currentUser}
           onClose={() => setModal(null)}
           onSave={async c => {
             const newClient = { ...c, status: 'active' };
-            const { data, error } = await db.from('clients').insert(clientToDbRow(newClient)).select().single();
-            let resolvedClient;
+            const { data: { session } } = await db.auth.getSession();
+            const userId = session?.user?.id;
+            const { data, error } = await db.from('clients').insert(clientToDbRow(newClient, userId)).select().single();
             if (error) {
               reportApiError('clients.insert', error);
-              resolvedClient = { ...newClient, id: newClient.id || ('c' + Math.random().toString(36).slice(2, 8)) };
-              setClients(prev => [...prev, resolvedClient]);
-            } else {
-              resolvedClient = dbRowToClient(data);
-              setClients(prev => [...prev, resolvedClient]);
-              const stepsToInsert = [].map(s => stepToDbRow(s, resolvedClient.id));
+              showToast('Failed to save client. Please try again.', 'error');
+              return;
+            }
+            const resolvedClient = dbRowToClient(data);
+            setClients(prev => [...prev, resolvedClient]);
+            const baseSteps = SAMPLE_STEPS.filter(s => !c.excludedSteps?.includes(s.id));
+            const allSteps = [...baseSteps, ...(c.customSteps || [])];
+            const stepsToInsert = allSteps.map(s => stepToDbRow(s, resolvedClient.id, userId));
+            if (stepsToInsert.length > 0) {
               const { error: stepsErr } = await db.from('steps').insert(stepsToInsert);
-              if (stepsErr) reportApiError('steps.insert', stepsErr, { clientId: resolvedClient.id });
+              if (stepsErr) {
+                reportApiError('steps.insert', stepsErr, { clientId: resolvedClient.id });
+                showToast('Client saved but steps failed to load. Please refresh.', 'warning');
+              }
+              setStepsByClient(prev => ({ ...prev, [resolvedClient.id]: allSteps }));
+            } else {
+              setStepsByClient(prev => ({ ...prev, [resolvedClient.id]: [] }));
             }
             loadedClients.current.add(resolvedClient.id);
-            setStepsByClient(prev => ({ ...prev, [resolvedClient.id]: [] }));
             setScreen({ kind: 'tracker', clientId: resolvedClient.id });
             setModal(null);
           }}
@@ -386,6 +461,10 @@ export default function App() {
           onSave={member => { addMember(member); setModal(null); }}
         />
       )}
+      {modal?.kind === 'sharePlan' && (() => {
+        const target = clients.find(c => c.id === modal.clientId) || client;
+        return target ? <SharePlanModal client={target} onClose={() => setModal(null)} /> : null;
+      })()}
 
       {DEV && (
       <TweaksPanel title="Tweaks">

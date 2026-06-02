@@ -18,6 +18,15 @@ export function dbRowToClient(row) {
     status:   row.status || 'active',
     contacts: row.contacts || [],
     progress: { done: row.progress_done || 0, total: row.progress_total || 20 },
+    mrr:         row.mrr_amount ?? null,
+    mrrCurrency: row.mrr_currency || 'USD',
+    planStatus:     row.plan_status || 'draft',
+    planApprovedAt: row.plan_approved_at || null,
+    planApprovedBy: row.plan_approved_by || null,
+    logoUrl:    row.logo_url || null,
+    sfId:       row.sf_id || null,
+    boxUrl:     row.box_url || null,
+    goLiveDate: row.go_live_date || null,
   };
 }
 
@@ -38,8 +47,8 @@ export function dbRowToStep(row) {
 }
 
 // Map app step shape to DB columns (for insert/update)
-export function stepToDbRow(step, clientId) {
-  return {
+export function stepToDbRow(step, clientId, userId = null) {
+  const row = {
     client_id: clientId,
     phase:     step.phase,
     title:     step.title,
@@ -50,11 +59,13 @@ export function stepToDbRow(step, clientId) {
     start:     step.start || 0,
     due:       step.due || 0,
   };
+  if (userId) row.user_id = userId;
+  return row;
 }
 
 // Map app client shape to DB columns (for insert/update)
-export function clientToDbRow(c) {
-  return {
+export function clientToDbRow(c, userId = null) {
+  const row = {
     name:           c.name,
     icp:            c.icp,
     flow:           c.flow,
@@ -72,5 +83,13 @@ export function clientToDbRow(c) {
     contacts:       c.contacts || [],
     progress_done:  c.progress?.done  || 0,
     progress_total: c.progress?.total || 20,
+    mrr_amount:     c.mrr ?? null,
+    mrr_currency:   c.mrrCurrency || 'USD',
+    logo_url:       c.logoUrl ?? null,
+    sf_id:          c.sfId ?? null,
+    box_url:        c.boxUrl ?? null,
+    go_live_date:   c.goLiveDate ?? null,
   };
+  if (userId) row.user_id = userId;
+  return row;
 }

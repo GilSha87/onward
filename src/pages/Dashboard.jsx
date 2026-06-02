@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { PHASES, ICONS } from '../lib/data';
-import { atRiskReason, dayInVerdict, nextMilestoneForPhase, SORTERS } from '../lib/helpers';
+import { atRiskReason, dayInVerdict, nextMilestoneForPhase, SORTERS, fmtMoney } from '../lib/helpers';
 import ClientLogo from '../components/ui/ClientLogo';
 import StatusBadge from '../components/ui/StatusBadge';
 import MiniJourney from '../components/ui/MiniJourney';
@@ -63,6 +63,8 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
     overdue: base.filter(c => atRiskReason(c)).length,
     inactive: clients.filter(c => c.status === 'inactive').length,
     archived: clients.filter(c => c.status === 'archived').length,
+    portfolioMrr: base.reduce((sum, c) => sum + (Number(c.mrr) || 0), 0),
+    mrrCurrency: (base.find(c => c.mrr != null && c.mrr !== '')?.mrrCurrency) || 'USD',
   }), [base, clients]);
 
   const focusClients = useMemo(() => base.map(c => ({ c, risk: atRiskReason(c) })).filter(x => x.risk).slice(0, 4), [base]);
@@ -99,6 +101,13 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
             <div className="value tabnum" style={{ color: stats.overdue > 0 ? 'var(--duda)' : 'var(--ink)' }}>{stats.overdue}</div>
             <div className="delta" style={{ color: stats.overdue > 0 ? 'var(--duda-deep)' : 'var(--ink-muted)' }}>{stats.overdue > 0 ? 'Action needed' : 'All clear'}</div>
           </div>
+          {stats.portfolioMrr > 0 && (
+            <div className="dash-stat">
+              <div className="label">Portfolio MRR</div>
+              <div className="value tabnum">{fmtMoney(stats.portfolioMrr, stats.mrrCurrency)}</div>
+              <div className="delta">ARR {fmtMoney(stats.portfolioMrr * 12, stats.mrrCurrency)}</div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -195,7 +204,10 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                       <div className="client-name">{c.name}</div>
                       {c.status && c.status !== 'active' && <StatusBadge status={c.status} />}
                     </div>
-                    <div className="client-sub">{c.flag} {c.country} · {c.contacts[0]?.name}</div>
+                    <div className="client-sub">
+                      {c.flag} {c.country} · {c.contacts[0]?.name}
+                      {c.mrr != null && c.mrr !== '' && <span> · {fmtMoney(c.mrr, c.mrrCurrency)}/mo</span>}
+                    </div>
                   </div>
                 </div>
                 <div>

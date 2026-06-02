@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ICONS } from '../lib/data';
+import { db } from '../lib/supabase';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
 
@@ -7,16 +7,36 @@ export default function AddTeamModal({ onClose, onSave }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Staff');
-  const [showPin, setShowPin] = useState(false);
-  const [pin, setPin] = useState('4178');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  function gen() {
-    setPin(String(Math.floor(1000 + Math.random() * 9000)));
-  }
-
-  function save() {
-    if (!name.trim()) return;
-    onSave?.({ name, email, role });
+  async function save() {
+    if (!name.trim() || !email.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-team-member`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), role }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Invite failed');
+      onSave?.({ name: name.trim(), email: email.trim(), role });
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to send invite. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -24,8 +44,16 @@ export default function AddTeamModal({ onClose, onSave }) {
       <ModalHead title="Add team member" eyebrow="Onboarding team" onClose={onClose} />
       <div className="modal-body" style={{ background: 'var(--paper-soft)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
-          <div className="field"><label>Full name *</label><input className="input" placeholder="Avery Okonkwo" value={name} onChange={e => setName(e.target.value)} /></div>
-          <div className="field"><label>Email</label><input className="input" placeholder="avery@duda.co" value={email} onChange={e => setEmail(e.target.value)} /></div>
+          <div className="field">
+            <label>Full name *</label>
+            <input className="input" placeholder="Avery Okonkwo"
+              value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Email *</label>
+            <input className="input" type="email" placeholder="avery@duda.co"
+              value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
         </div>
         <div className="field" style={{ marginBottom: 18 }}>
           <label>Role *</label>
@@ -36,27 +64,31 @@ export default function AddTeamModal({ onClose, onSave }) {
               { k: 'Admin', label: 'Admin', sub: 'Full access' },
             ].map(o => (
               <button key={o.k} onClick={() => setRole(o.k)} className="card card-pad"
-                style={{ padding: 12, textAlign: 'left', cursor: 'pointer', borderColor: role === o.k ? 'var(--ink)' : 'var(--hairline)', background: role === o.k ? 'var(--paper)' : 'var(--surface)' }}>
+                style={{
+                  padding: 12, textAlign: 'left', cursor: 'pointer',
+                  borderColor: role === o.k ? 'var(--ink)' : 'var(--hairline)',
+                  background: role === o.k ? 'var(--paper)' : 'var(--surface)',
+                }}>
                 <div className="text-sm semibold">{o.label}</div>
                 <div className="muted text-xs" style={{ marginTop: 2 }}>{o.sub}</div>
               </button>
             ))}
           </div>
         </div>
-        <div className="field" style={{ marginBottom: 18 }}>
-          <label>PIN *</label>
-          <div className="flex gap-2">
-            <input type={showPin ? 'text' : 'password'} value={pin} onChange={e => setPin(e.target.value)} className="input mono" style={{ flex: 1, letterSpacing: '0.3em', textAlign: 'center' }} />
-            <button className="btn" onClick={() => setShowPin(!showPin)}>{showPin ? 'Hide' : 'Show'}</button>
-            <button className="btn" onClick={gen}>{ICONS.spark} Generate</button>
-          </div>
-        </div>
+        {error && (
+          <p style={{ color: 'var(--crimson)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+            {error}
+          </p>
+        )}
       </div>
       <div className="modal-foot">
-        <span className="muted text-xs">An invite email will be sent.</span>
+        <span className="muted text-xs">An invite email will be sent to {email || 'the member'}.</span>
         <div className="flex gap-2">
-          <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={save} disabled={!name.trim()}>Save member</button>
+          <button className="btn" onClick={onClose} disabled={loading}>Cancel</button>
+          <button className="btn primary" onClick={save}
+            disabled={!name.trim() || !email.trim() || loading}>
+            {loading ? 'Sending invite…' : 'Send invite'}
+          </button>
         </div>
       </div>
     </Modal>

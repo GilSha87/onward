@@ -77,3 +77,32 @@ create policy "steps_delete" on public.steps for delete using (auth.uid() = user
 create index clients_user_id_idx on public.clients(user_id);
 create index steps_client_id_idx on public.steps(client_id);
 create index steps_user_id_idx   on public.steps(user_id);
+
+-- ============================================================
+-- Team members (org-level profiles, linked to auth.users)
+-- ============================================================
+create table if not exists public.team_members (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users(id) on delete cascade,
+  invited_by  uuid references auth.users(id),
+  name        text not null,
+  email       text not null unique,
+  role        text not null default 'Staff',   -- 'Staff' | 'Executive' | 'Admin'
+  status      text not null default 'invited', -- 'invited' | 'active'
+  created_at  timestamptz default now()
+);
+alter table public.team_members enable row level security;
+
+-- Any authenticated user can read the team list
+create policy "team_select" on public.team_members
+  for select using (auth.uid() is not null);
+
+-- Only the inviter can insert
+create policy "team_insert" on public.team_members
+  for insert with check (auth.uid() = invited_by);
+
+-- Members can update their own record
+create policy "team_update" on public.team_members
+  for update using (auth.uid() = user_id);
+
+create index team_members_email_idx on public.team_members(email);

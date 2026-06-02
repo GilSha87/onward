@@ -10,6 +10,8 @@ import JourneyStrip from '../components/journey/JourneyStrip';
 import PhaseGroup from '../components/journey/PhaseGroup';
 import Gantt from '../components/journey/Gantt';
 import InboxPanel from './InboxPanel';
+import FilesPanel from '../components/files/FilesPanel';
+import { fmtMoney, arrFromMrr } from '../lib/helpers';
 
 export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, onToggleStep, onEditClient }) {
   const [tab, setTab] = useState('overview');
@@ -38,6 +40,23 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             <span><b>Flow</b> · {client.flow}</span>
             <span><b>Touch</b> · {client.touch}</span>
             <span><b>Kickoff</b> · <span className="num">{client.kickoff}</span></span>
+            {client.mrr != null && client.mrr !== '' && (
+              <span>
+                <b>MRR</b> · <span className="num">{fmtMoney(client.mrr, client.mrrCurrency)}</span>
+                {arrFromMrr(client.mrr) != null && (
+                  <span className="muted"> · ARR {fmtMoney(arrFromMrr(client.mrr), client.mrrCurrency)}</span>
+                )}
+              </span>
+            )}
+            {client.goLiveDate && (
+              <span><b>Go-live</b> · <span className="num">{client.goLiveDate}</span></span>
+            )}
+            {client.sfId && (
+              <span><b>SF</b> · <span className="num">{client.sfId}</span></span>
+            )}
+            {client.boxUrl && (
+              <span><b>Box</b> · <a href={client.boxUrl} target="_blank" rel="noreferrer" className="link-subtle">Contract</a></span>
+            )}
           </div>
         </div>
         <div className="right">
@@ -144,16 +163,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
 
       {tab === 'inbox' && <InboxPanel onStep={onStep} />}
 
-      {tab === 'files' && (
-        <div className="empty">
-          <div className="empty-icon">{ICONS.cal}</div>
-          <h3>No files yet</h3>
-          <p>Logos, brand assets, contracts will appear here.</p>
-          <div className="empty-actions">
-            <button className="btn primary">{ICONS.plus} Upload file</button>
-          </div>
-        </div>
-      )}
+      {tab === 'files' && <FilesPanel client={client} />}
     </main>
   );
 }

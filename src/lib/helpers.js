@@ -10,6 +10,26 @@ export function fmtDate(d) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Format a monetary amount with currency. Returns '' for null/undefined.
+export function fmtMoney(amount, currency = 'USD') {
+  if (amount == null || amount === '' || isNaN(Number(amount))) return '';
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(Number(amount));
+  } catch {
+    return `${currency} ${Number(amount).toLocaleString()}`;
+  }
+}
+
+// Annual Recurring Revenue = MRR × 12.
+export function arrFromMrr(mrr) {
+  if (mrr == null || mrr === '' || isNaN(Number(mrr))) return null;
+  return Number(mrr) * 12;
+}
+
 export const PHASE_DAY_RANGES = {
   pre: [0,   10],
   p1:  [10,  28],

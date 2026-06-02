@@ -1,5 +1,6 @@
 import React from 'react';
 import { ICONS } from '../../lib/data';
+import LanguageSwitcher from '../ui/LanguageSwitcher';
 
 export default function Topbar({ view, setView, screen, setScreen, client, amName = 'Maya Levin', amInitials, onSignOut }) {
   const initials = amInitials || (amName || 'ML').split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -40,6 +41,7 @@ export default function Topbar({ view, setView, screen, setScreen, client, amNam
       )}
 
       <button className="btn ghost" onClick={() => setScreen({ kind: 'team' })}>Team</button>
+      <LanguageSwitcher />
       <span className="account-chip">
         <span className="avatar">{initials}</span>
         {amName}
