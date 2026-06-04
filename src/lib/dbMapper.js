@@ -1,3 +1,12 @@
+// Valid phase IDs (mirrors PHASES in lib/data.jsx). Any other value is legacy/invalid.
+const VALID_PHASES = ['pre', 'p1', 'p2', 'p3', 'p4'];
+
+// Normalize a stored phase to a valid id, falling back to 'pre' for legacy values
+// like the display label "Phase 00" that older code paths persisted.
+export function normalizePhase(phase) {
+  return VALID_PHASES.includes(phase) ? phase : 'pre';
+}
+
 // Map DB row (snake_case flat) to app client shape (camelCase nested)
 export function dbRowToClient(row) {
   return {
@@ -14,7 +23,7 @@ export function dbRowToClient(row) {
     kickoff:  row.kickoff,
     am:       row.am,
     dayIn:    row.day_in,
-    phase:    row.phase,
+    phase:    normalizePhase(row.phase),
     status:   row.status || 'active',
     contacts: row.contacts || [],
     progress: { done: row.progress_done || 0, total: row.progress_total || 20 },

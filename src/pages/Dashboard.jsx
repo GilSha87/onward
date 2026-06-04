@@ -39,13 +39,20 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
 
   const base = clients.filter(c => c.status !== 'deleted' && (showArchived || c.status !== 'archived'));
 
-  const baseFiltered = useMemo(() => {
+  // baseWithSearchOnly: all filters except the tab — used to compute per-tab counts
+  const baseWithSearchOnly = useMemo(() => {
     return base.filter(c => {
       if (icp !== 'All' && c.icp !== icp) return false;
       if (touch !== 'All' && c.touch !== touch) return false;
       if (flowFilter !== 'All' && c.flow !== flowFilter) return false;
       if (amFilter !== 'All' && c.am !== amFilter) return false;
-      if (search !== '' && !`${c.name} ${c.country} ${c.contacts.map(x => x.name).join(' ')}`.toLowerCase().includes(search.toLowerCase())) return false;
+      if (search !== '' && !`${c.name} ${c.country} ${(c.contacts || []).map(x => x.name).join(' ')}`.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [base, icp, touch, flowFilter, amFilter, search]);
+
+  const baseFiltered = useMemo(() => {
+    return baseWithSearchOnly.filter(c => {
       if (tab === 'setup' && !['p1', 'p2'].includes(c.phase)) return false;
       if (tab === 'launching' && c.phase !== 'p3') return false;
       if (tab === 'scaled' && c.phase !== 'p4') return false;
@@ -53,7 +60,17 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
       if (tab === 'inactive' && c.status !== 'inactive') return false;
       return true;
     });
-  }, [base, icp, touch, flowFilter, amFilter, search, tab]);
+  }, [baseWithSearchOnly, tab]);
+
+  // Per-tab counts reflecting the active search/filter but not the current tab
+  const filteredStats = useMemo(() => ({
+    all: baseWithSearchOnly.length,
+    inSetup: baseWithSearchOnly.filter(c => ['p1', 'p2'].includes(c.phase)).length,
+    launching: baseWithSearchOnly.filter(c => c.phase === 'p3').length,
+    launched: baseWithSearchOnly.filter(c => c.phase === 'p4').length,
+    inactive: baseWithSearchOnly.filter(c => c.status === 'inactive').length,
+    overdue: baseWithSearchOnly.filter(c => atRiskReason(c)).length,
+  }), [baseWithSearchOnly]);
 
   const sorted = useMemo(() => {
     const sorter = SORTERS[sort.key] || SORTERS.name;
@@ -169,12 +186,12 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
       )}
 
       <div className="tab-row">
-        <button className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>All <span className="count">{base.length}</span></button>
-        <button className={tab === 'setup' ? 'on' : ''} onClick={() => setTab('setup')}>In setup <span className="count">{stats.inSetup}</span></button>
-        <button className={tab === 'launching' ? 'on' : ''} onClick={() => setTab('launching')}>Launching <span className="count">{stats.launching}</span></button>
-        <button className={tab === 'scaled' ? 'on' : ''} onClick={() => setTab('scaled')}>Scaled <span className="count">{stats.launched}</span></button>
-        {stats.inactive > 0 && <button className={tab === 'inactive' ? 'on' : ''} onClick={() => setTab('inactive')}>Inactive <span className="count">{stats.inactive}</span></button>}
-        <button className={tab === 'risk' ? 'on' : ''} onClick={() => setTab('risk')} style={{ color: tab === 'risk' ? 'var(--duda-deep)' : undefined }}>At risk <span className="count">{stats.overdue}</span></button>
+        <button className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>All <span className="count">{filteredStats.all}</span></button>
+        <button className={tab === 'setup' ? 'on' : ''} onClick={() => setTab('setup')}>In setup <span className="count">{filteredStats.inSetup}</span></button>
+        <button className={tab === 'launching' ? 'on' : ''} onClick={() => setTab('launching')}>Launching <span className="count">{filteredStats.launching}</span></button>
+        <button className={tab === 'scaled' ? 'on' : ''} onClick={() => setTab('scaled')}>Scaled <span className="count">{filteredStats.launched}</span></button>
+        {stats.inactive > 0 && <button className={tab === 'inactive' ? 'on' : ''} onClick={() => setTab('inactive')}>Inactive <span className="count">{filteredStats.inactive}</span></button>}
+        <button className={tab === 'risk' ? 'on' : ''} onClick={() => setTab('risk')} style={{ color: tab === 'risk' ? 'var(--duda-deep)' : undefined }}>At risk <span className="count">{filteredStats.overdue}</span></button>
       </div>
 
       {sorted.length === 0 ? (
@@ -214,7 +231,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                       {c.status && c.status !== 'active' && <StatusBadge status={c.status} />}
                     </div>
                     <div className="client-sub">
-                      {c.flag} {c.country} · {c.contacts[0]?.name}
+                      {c.flag} {c.country}{c.contacts?.[0]?.name ? ` · ${c.contacts[0].name}` : ''}
                       {c.mrr != null && c.mrr !== '' && <span> · {fmtMoney(c.mrr, c.mrrCurrency)}/mo</span>}
                     </div>
                   </div>
@@ -225,7 +242,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                 </div>
                 <div>
                   <MiniJourney phaseIdx={pi} progress={prog} />
-                  <div className="client-sub" style={{ marginTop: 6 }}>{PHASES[pi]?.name} · {c.progress.done}/{c.progress.total}</div>
+                  <div className="client-sub" style={{ marginTop: 6 }}>{PHASES[pi]?.name} · {c.progress?.done ?? 0}/{c.progress?.total ?? 0}</div>
                 </div>
                 <div>
                   <div className="day-counter"><span className="n tabnum">{c.dayIn}</span><span className="l">/180</span></div>

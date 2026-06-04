@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { PHASES, STATUS, PRIO } from '../lib/data';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
@@ -9,6 +9,7 @@ export default function EditStepModal({ step, onClose, onSave }) {
   const [status, setStatus] = useState(step.status);
   const [owner, setOwner] = useState(step.owner);
   const [prio, setPrio] = useState(step.prio);
+  const savedRef = useRef(false);
 
   return (
     <Modal size="md" onClose={onClose}>
@@ -56,10 +57,10 @@ export default function EditStepModal({ step, onClose, onSave }) {
         </div>
       </div>
       <div className="modal-foot">
-        <button className="btn ghost" onClick={() => { if (onSave) onSave({ ...step, _delete: true }); onClose(); }}>Delete step</button>
+        <button className="btn ghost" onClick={() => { if (savedRef.current) return; savedRef.current = true; if (onSave) onSave({ ...step, _delete: true }); onClose(); }}>Delete step</button>
         <div className="flex gap-2">
           <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={() => { if (onSave) onSave({ ...step, title, why, status, owner, prio }); onClose(); }}>Save step</button>
+          <button className="btn primary" onClick={() => { if (savedRef.current) return; savedRef.current = true; if (onSave) onSave({ ...step, title, why, status, owner, prio }); onClose(); }}>Save step</button>
         </div>
       </div>
     </Modal>

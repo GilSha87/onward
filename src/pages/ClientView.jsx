@@ -20,13 +20,23 @@ function amInitials(name) {
   return name.trim().split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('');
 }
 
+// Convert a raw email like "gil.shalom@duda.co" to "Gil Shalom".
+// If the value contains no "@" it is already a display name — return as-is.
+function amDisplayName(am) {
+  if (!am) return 'Your Account Manager';
+  if (!am.includes('@')) return am;
+  const local = am.split('@')[0];
+  return local.split(/[._-]/).map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ').trim() || am;
+}
+
 export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) {
   const [tab, setTab] = useState('tasks');
   const langCode = LANG_MAP[client.lang] || 'en';
   const t = i18next.getFixedT(langCode);
 
-  const phaseIdx = PHASES.findIndex(p => p.id === client.phase);
-  const pct = client.progress.total > 0 ? client.progress.done / client.progress.total : 0;
+  const phaseIdx = Math.max(0, PHASES.findIndex(p => p.id === client.phase));
+  const progress = client.progress || { done: 0, total: 0 };
+  const pct = progress.total > 0 ? progress.done / progress.total : 0;
   const stepCounts = {};
   PHASES.forEach(p => {
     const ps = steps.filter(s => s.phase === p.id);
@@ -36,21 +46,22 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
   const clientTasks = visibleSteps.filter(s => s.owner === 'Client' || s.owner === 'Both').filter(s => s.status !== 'done');
   const allClientSteps = visibleSteps.filter(s => s.owner === 'Client' || s.owner === 'Both');
 
-  const firstName = client.contacts[0]?.name?.split(' ')[0] || 'there';
-  const amMonogram = amInitials(client.am);
+  const firstName = client.contacts?.[0]?.name?.split(' ')[0] || null;
+  const amName = amDisplayName(client.am);
+  const amMonogram = amInitials(amName);
 
   return (
     <div className="client-shell">
       <section className="client-mast">
         <div className="container">
-          <p className="client-greeting">{t('clientView.greeting', { name: firstName })}</p>
+          <p className="client-greeting">{firstName ? t('clientView.greeting', { name: firstName }) : 'Welcome back.'}</p>
           <h1 className="client-title">Your <em>onboarding</em>,<br/>day <span className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>{client.dayIn}</span> of <span className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>180</span>.</h1>
           <div className="client-progress">
             <ProgressRing pct={pct} />
             <div className="meta">
               <div className="label">{t('clientView.you_are_here')}</div>
               <div className="value">{PHASES[phaseIdx]?.name}</div>
-              <div className="sub">{t('clientView.progress_steps', { done: client.progress.done, total: client.progress.total, am: client.am })}</div>
+              <div className="sub">{t('clientView.progress_steps', { done: progress.done, total: progress.total, am: amName })}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="label" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-muted)', fontWeight: 500 }}>{t('clientView.next_milestone')}</div>
@@ -105,7 +116,7 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
                 <div className="eyebrow">{t('clientView.team_card_title')}</div>
                 <div className="flex items-center gap-3" style={{ marginTop: 14 }}>
                   <span className="avatar" style={{ width: 44, height: 44, fontSize: 14, background: 'var(--ink)' }}>{amMonogram}</span>
-                  <div><div style={{ fontSize: 18, fontWeight: 700 }}>{client.am}</div><div className="muted text-xs">{t('clientView.am_tagline')}</div></div>
+                  <div><div style={{ fontSize: 18, fontWeight: 700 }}>{amName}</div><div className="muted text-xs">{t('clientView.am_tagline')}</div></div>
                 </div>
               </div>
               <div className="card card-pad" style={{ marginTop: 20, background: 'var(--paper-soft)' }}>

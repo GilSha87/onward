@@ -25,6 +25,10 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    // Per-client or custom error fallback: render prop receives { onReset }
+    if (this.props.fallback) {
+      return this.props.fallback({ onReset: () => this.setState({ hasError: false }) });
+    }
     return (
       <div
         role="alert"

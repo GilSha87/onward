@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PHASES, ICONS, ACTIVITY, AM_RESOURCES } from '../lib/data';
+import { showToast } from '../components/ui/Toast';
 import { QUESTIONS } from '../lib/data';
 import ClientLogo from '../components/ui/ClientLogo';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -21,7 +22,8 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
     const ps = steps.filter(s => s.phase === p.id);
     stepCounts[p.id] = { done: ps.filter(s => s.status === 'done').length, total: ps.length };
   });
-  const phaseIdx = PHASES.findIndex(p => p.id === client.phase);
+  // Guard: if client.phase doesn't match any known phase, fall back to index 0
+  const phaseIdx = Math.max(0, PHASES.findIndex(p => p.id === client.phase));
   const cur = stepCounts[client.phase];
   const phaseProgress = cur && cur.total > 0 ? cur.done / cur.total : 0;
 
@@ -65,7 +67,10 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             <span className="l">day in</span>
           </div>
           <div className="flex gap-2">
-            <button className="btn" onClick={() => setScreen({ kind: 'client', clientId: client.id })}>{ICONS.link} Client link</button>
+            <button className="btn" onClick={() => {
+              setScreen({ kind: 'client', clientId: client.id });
+              showToast('Switched to client view — this is what your client sees.', 'success');
+            }}>{ICONS.link} Client link</button>
             <Dropdown items={[
               { label: '60·90·180 Plan', onClick: () => onPlanEdit(client.id) },
               null,
@@ -98,7 +103,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
               <h2 className="h2">Current phase</h2>
               <button className="btn ghost sm" onClick={() => setTab('steps')}>View all phases {ICONS.arrow}</button>
             </div>
-            <PhaseGroup phase={PHASES[phaseIdx]} steps={steps.filter(s => s.phase === client.phase)} onStep={onStep} dayIn={client.dayIn} />
+            <PhaseGroup phase={PHASES[phaseIdx]} steps={steps.filter(s => s.phase === client.phase)} onStep={onStep} onToggle={onToggleStep} dayIn={client.dayIn} />
           </div>
           <aside>
             <div className="rail-card">
@@ -115,7 +120,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             </div>
             <div className="rail-card">
               <h4>Contacts</h4>
-              {client.contacts.map((c, i) => (
+              {(client.contacts || []).map((c, i) => (
                 <div key={i} className="contact">
                   <span className="avatar" style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hairline)' }}>{(c.name || '?').split(' ').map(n => n[0]).join('')}</span>
                   <div>
@@ -152,7 +157,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
           {PHASES.map(p => {
             const ps = steps.filter(s => s.phase === p.id);
             if (!ps.length) return null;
-            return <PhaseGroup key={p.id} phase={p} steps={ps} onStep={onStep} dayIn={client.dayIn} />;
+            return <PhaseGroup key={p.id} phase={p} steps={ps} onStep={onStep} onToggle={onToggleStep} dayIn={client.dayIn} />;
           })}
         </div>
       )}

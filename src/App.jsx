@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 import { db } from './lib/supabase';
 import { SAMPLE_CLIENTS, SAMPLE_STEPS } from './lib/data';
 import { dbRowToClient, clientToDbRow, dbRowToStep, stepToDbRow } from './lib/dbMapper';
@@ -39,6 +40,37 @@ function userFromSession(session) {
   return { name, initials };
 }
 
+// Serialize the in-app `screen` state to a URL hash so views are deep-linkable
+// and survive a browser refresh. The am/client `view` toggle is independent of
+// the route, so both 'tracker' and 'client' kinds map to the same client URL.
+function screenToHash(screen) {
+  switch (screen.kind) {
+    case 'tracker':
+    case 'client':
+      return screen.clientId ? `#/client/${screen.clientId}` : '#/portfolio';
+    case 'plan':
+      return screen.clientId ? `#/client/${screen.clientId}/plan` : '#/portfolio';
+    case 'team':
+      return '#/team';
+    case 'dashboard':
+    default:
+      return '#/portfolio';
+  }
+}
+
+// Parse a URL hash back into a `screen` object. Unknown routes fall back to the
+// portfolio dashboard.
+function hashToScreen(hash) {
+  const parts = (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (parts.length === 0 || parts[0] === 'portfolio') return { kind: 'dashboard' };
+  if (parts[0] === 'team') return { kind: 'team' };
+  if (parts[0] === 'client' && parts[1]) {
+    if (parts[2] === 'plan') return { kind: 'plan', clientId: parts[1] };
+    return { kind: 'tracker', clientId: parts[1] };
+  }
+  return { kind: 'dashboard' };
+}
+
 const DEV = import.meta.env.DEV;
 
 export default function App() {
@@ -48,6 +80,10 @@ export default function App() {
   const [authed, setAuthed] = useState(DEV ? !t.showLogin : false);
   const [view, setView] = useState(t.viewMode);
   const [screen, setScreen] = useState(() => {
+    // A hash route present on load (deep link or refresh) wins over tweak defaults.
+    if (window.location.hash && window.location.hash !== '#/') {
+      return hashToScreen(window.location.hash);
+    }
     if (t.startScreen === 'tracker') return { kind: 'tracker', clientId: 'c1' };
     if (t.startScreen === 'plan') return { kind: 'plan', clientId: 'c1' };
     if (t.startScreen === 'team') return { kind: 'team' };
@@ -193,6 +229,28 @@ export default function App() {
     if (screen.clientId) loadStepsForClient(screen.clientId);
   }, [screen.clientId]);
 
+  // Keep the URL hash in sync with the active screen so deep links / refresh work.
+  // Assigning location.hash pushes a history entry, so browser back/forward
+  // navigates between screens. The equality guard prevents a write↔hashchange loop.
+  useEffect(() => {
+    const target = screenToHash(screen);
+    if (window.location.hash !== target) {
+      window.location.hash = target;
+    }
+  }, [screen.kind, screen.clientId]);
+
+  // React to browser back/forward and manual hash edits.
+  useEffect(() => {
+    function onHashChange() {
+      const next = hashToScreen(window.location.hash);
+      setScreen(prev =>
+        prev.kind === next.kind && prev.clientId === next.clientId ? prev : next
+      );
+    }
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   const client = screen.clientId ? clients.find(c => c.id === screen.clientId) : null;
 
   function editClient(id, updates) {
@@ -239,6 +297,11 @@ export default function App() {
             }
           });
       }
+      // Keep client.progress.done in sync so portfolio count stays fresh
+      const done = updated.filter(s => s.status === 'done').length;
+      setClients(cs => cs.map(c => c.id === clientId
+        ? { ...c, progress: { ...c.progress, done } }
+        : c));
       return { ...prev, [clientId]: updated };
     });
   }
@@ -398,15 +461,26 @@ export default function App() {
         />
       )}
       {effectiveScreen.kind === 'tracker' && client && (
-        <Tracker
-          client={client}
-          steps={clientSteps}
-          setScreen={setScreen}
-          onPlanEdit={id => setScreen({ kind: 'plan', clientId: id })}
-          onStep={s => setModal({ kind: 'editStep', step: s, clientId: client.id })}
-          onToggleStep={stepId => toggleStep(client.id, stepId)}
-          onEditClient={editClient}
-        />
+        <ErrorBoundary key={client.id} fallback={({ onReset }) => (
+          <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#1A1714' }}>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>This client's data looks incomplete</div>
+            <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>Some required fields are missing. Try going back to the portfolio.</p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button onClick={onReset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--hairline)', background: 'var(--paper)', cursor: 'pointer', fontSize: 13 }}>Try again</button>
+              <button onClick={() => { onReset(); setScreen({ kind: 'dashboard' }); }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#FB673E', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Back to portfolio</button>
+            </div>
+          </div>
+        )}>
+          <Tracker
+            client={client}
+            steps={clientSteps}
+            setScreen={setScreen}
+            onPlanEdit={id => setScreen({ kind: 'plan', clientId: id })}
+            onStep={s => setModal({ kind: 'editStep', step: s, clientId: client.id })}
+            onToggleStep={stepId => toggleStep(client.id, stepId)}
+            onEditClient={editClient}
+          />
+        </ErrorBoundary>
       )}
       {effectiveScreen.kind === 'plan' && client && (
         <PlanView
@@ -425,12 +499,23 @@ export default function App() {
         />
       )}
       {effectiveScreen.kind === 'client' && client && (
-        <ClientView
-          client={client}
-          steps={clientSteps}
-          onOpenPlan={() => setScreen({ kind: 'plan', clientId: client.id })}
-          onToggleStep={stepId => toggleStep(client.id, stepId)}
-        />
+        <ErrorBoundary key={client.id} fallback={({ onReset }) => (
+          <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#1A1714' }}>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>This client's data looks incomplete</div>
+            <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>Some required fields are missing. Try going back to the portfolio.</p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button onClick={onReset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--hairline)', background: 'var(--paper)', cursor: 'pointer', fontSize: 13 }}>Try again</button>
+              <button onClick={() => { onReset(); setScreen({ kind: 'dashboard' }); }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#FB673E', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Back to portfolio</button>
+            </div>
+          </div>
+        )}>
+          <ClientView
+            client={client}
+            steps={clientSteps}
+            onOpenPlan={() => setScreen({ kind: 'plan', clientId: client.id })}
+            onToggleStep={stepId => toggleStep(client.id, stepId)}
+          />
+        </ErrorBoundary>
       )}
       {effectiveScreen.kind === 'team' && (
         <TeamPage team={team} onAdd={() => setModal({ kind: 'addTeam' })} onDeleteMember={deleteMember} />
@@ -448,7 +533,7 @@ export default function App() {
             if (error) {
               reportApiError('clients.insert', error);
               showToast('Failed to save client. Please try again.', 'error');
-              return;
+              throw error;
             }
             const resolvedClient = dbRowToClient(data);
             setClients(prev => [...prev, resolvedClient]);

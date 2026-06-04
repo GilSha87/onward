@@ -35,6 +35,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
   useEffect(() => { setExcludedSteps([]); setCustomSteps([]); }, [icp, flow]);
   const [logo, setLogo] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const logoInputRef = useRef(null);
 
   function updateContact(i, c) {
@@ -79,7 +80,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!name.trim()) { showToast('Please enter a company name.', 'error'); return; }
     const mono = name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '??';
     const flagParts = country.match(/^(\S+)\s+(.+)/);
@@ -91,8 +92,9 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
       return flowOk && segOk && !excludedSteps.includes(s.id);
     }).length + customSteps.length;
     const amName = currentUser?.name || 'Account Manager';
-    if (onSave) {
-      onSave({
+    setSaving(true);
+    try {
+      if (onSave) await onSave({
         id: 'c' + Math.random().toString(36).slice(2, 8),
         name: name.trim(), icp, flow, touch,
         country: countryName, flag, color, mono,
@@ -109,8 +111,11 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
         excludedSteps,
         customSteps,
       });
+      // App.jsx calls setModal(null) on success — no need to call onClose() here
+    } catch {
+      // Error toast already shown by App.jsx's onSave
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -361,12 +366,12 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
           const flowOk = !s.flows || s.flows.includes('All') || s.flows.includes(flow);
           const segOk = !s.segments || s.segments.includes('All') || s.segments.includes(icp);
           return flowOk && segOk && !excludedSteps.includes(s.id);
-        }).length + customSteps.length} steps</> : 'Fill in client info above'}</span>
+        }).length + customSteps.length} steps</> : (tab === 'info' ? 'Fill in client info above' : '')}</span>
         <div className="flex gap-2">
           <button className="btn" onClick={onClose}>Cancel</button>
           {tab !== 'info' && <button className="btn" onClick={() => setTab(tab === 'contacts' ? 'info' : tab === 'brand' ? 'contacts' : 'brand')}>{ICONS.arrowL} Back</button>}
-          {tab !== 'steps' && <button className="btn primary" onClick={() => setTab(tab === 'info' ? 'contacts' : tab === 'contacts' ? 'brand' : 'steps')}>Continue {ICONS.arrow}</button>}
-          {tab === 'steps' && <button className="btn primary" onClick={handleSave}>Save client {ICONS.check}</button>}
+          {tab !== 'steps' && <button className="btn primary" disabled={tab === 'info' && !name.trim()} onClick={() => setTab(tab === 'info' ? 'contacts' : tab === 'contacts' ? 'brand' : 'steps')}>Continue {ICONS.arrow}</button>}
+          {tab === 'steps' && <button className="btn primary" disabled={saving} onClick={handleSave}>{saving ? 'Saving…' : <>Save client {ICONS.check}</>}</button>}
         </div>
       </div>
     </Modal>
