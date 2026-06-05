@@ -909,7 +909,8 @@ select.input {
   transition: background .12s ease;
 }
 .client-row:last-child { border-bottom: 0; }
-.client-row:hover { background: var(--duda-tint); }
+.client-row:hover { background: var(--duda-soft); }
+.client-row:has(.dropdown-menu) { background: var(--duda-soft); }
 .client-row.head {
   background: var(--paper-soft);
   cursor: default;
