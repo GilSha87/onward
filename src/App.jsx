@@ -14,6 +14,7 @@ import PublicPlanView from './pages/PublicPlanView';
 import ClientView from './pages/ClientView'
 import TeamPage from './pages/TeamPage';
 import Login from './pages/Login';
+import InviteAccept from './pages/InviteAccept';
 import AddClientModal from './modals/AddClientModal';
 import EditStepModal from './modals/EditStepModal';
 import AddTeamModal from './modals/AddTeamModal';
@@ -40,11 +41,17 @@ function userFromSession(session) {
   return { name, initials };
 }
 
+// Detect a Supabase invite/signup token embedded in the URL hash fragment.
+function isInviteHash(hash) {
+  return /type=(invite|signup)/.test(hash || '');
+}
+
 // Serialize the in-app `screen` state to a URL hash so views are deep-linkable
 // and survive a browser refresh. The am/client `view` toggle is independent of
 // the route, so both 'tracker' and 'client' kinds map to the same client URL.
 function screenToHash(screen) {
   switch (screen.kind) {
+    case 'invite': return '#/invite';
     case 'tracker':
     case 'client':
       return screen.clientId ? `#/client/${screen.clientId}` : '#/portfolio';
@@ -64,6 +71,7 @@ function hashToScreen(hash) {
   const parts = (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
   if (parts.length === 0 || parts[0] === 'portfolio') return { kind: 'dashboard' };
   if (parts[0] === 'team') return { kind: 'team' };
+  if (parts[0] === 'invite' || parts[0] === 'signup') return { kind: 'invite' };
   if (parts[0] === 'client' && parts[1]) {
     if (parts[2] === 'plan') return { kind: 'plan', clientId: parts[1] };
     return { kind: 'tracker', clientId: parts[1] };
@@ -78,6 +86,11 @@ export default function App() {
   // In production, always require a real Supabase session. The showLogin tweak
   // is a dev-only convenience and never bypasses auth in a production build.
   const [authed, setAuthed] = useState(DEV ? !t.showLogin : false);
+  // inviteMode is true when the page was opened with a Supabase invite/signup
+  // token in the URL hash, OR when the user navigates to #/invite or #/signup.
+  const [inviteMode, setInviteMode] = useState(
+    () => isInviteHash(window.location.hash) || hashToScreen(window.location.hash).kind === 'invite'
+  );
   const [view, setView] = useState(t.viewMode);
   const [screen, setScreen] = useState(() => {
     // A hash route present on load (deep link or refresh) wins over tweak defaults.
@@ -232,17 +245,21 @@ export default function App() {
   // Keep the URL hash in sync with the active screen so deep links / refresh work.
   // Assigning location.hash pushes a history entry, so browser back/forward
   // navigates between screens. The equality guard prevents a write↔hashchange loop.
+  // Skip sync while in invite mode so the Supabase token in the hash isn't wiped.
   useEffect(() => {
+    if (inviteMode) return;
     const target = screenToHash(screen);
     if (window.location.hash !== target) {
       window.location.hash = target;
     }
-  }, [screen.kind, screen.clientId]);
+  }, [screen.kind, screen.clientId, inviteMode]);
 
   // React to browser back/forward and manual hash edits.
   useEffect(() => {
     function onHashChange() {
+      if (isInviteHash(window.location.hash)) { setInviteMode(true); return; }
       const next = hashToScreen(window.location.hash);
+      if (next.kind === 'invite') { setInviteMode(true); return; }
       setScreen(prev =>
         prev.kind === next.kind && prev.clientId === next.clientId ? prev : next
       );
@@ -386,6 +403,20 @@ export default function App() {
   const publicToken = tokenFromPath();
   if (publicToken) return <PublicPlanView token={publicToken} />;
 
+  // Public invite/signup route: shown when the user lands via a Supabase invite
+  // magic link (URL contains type=invite/signup tokens) or navigates to #/invite.
+  if (inviteMode) {
+    return (
+      <InviteAccept
+        onDone={() => {
+          setInviteMode(false);
+          setAuthed(true);
+          setScreen({ kind: 'dashboard' });
+        }}
+      />
+    );
+  }
+
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
 
   const effectiveScreen = (view === 'client' && screen.kind === 'tracker') ? { ...screen, kind: 'client' }
@@ -455,7 +486,7 @@ export default function App() {
         <Dashboard
           clients={clients}
           setScreen={setScreen}
-          onAddClient={() => setModal({ kind: 'addClient' })}
+          onAddClient={() => setModal({ kind: 'addClient', openedAt: Date.now() })}
           onEditClient={editClient}
           amName={currentUser.name}
         />
@@ -523,6 +554,7 @@ export default function App() {
 
       {modal?.kind === 'addClient' && (
         <AddClientModal
+          key={modal.openedAt}
           currentUser={currentUser}
           onClose={() => setModal(null)}
           onSave={async c => {
