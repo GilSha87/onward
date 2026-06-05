@@ -16,6 +16,8 @@ import { fmtMoney, arrFromMrr } from '../lib/helpers';
 
 export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, onToggleStep, onEditClient }) {
   const [tab, setTab] = useState('overview');
+  const [addingContact, setAddingContact] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', role: '', email: '' });
 
   const stepCounts = {};
   PHASES.forEach(p => {
@@ -62,9 +64,15 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
           </div>
         </div>
         <div className="right">
-          <div className="day-counter" style={{ alignItems: 'baseline' }}>
-            <span className="n tabnum" style={{ fontSize: 40 }}>{client.dayIn}</span>
-            <span className="l">day in</span>
+          <div
+            title="Days elapsed since onboarding kickoff"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}
+          >
+            <div className="day-counter" style={{ alignItems: 'baseline' }}>
+              <span className="n tabnum" style={{ fontSize: 40 }}>{client.dayIn}</span>
+              <span className="l">/ 180</span>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ink-muted)', opacity: 0.65, lineHeight: 1 }}>days in onboarding</span>
           </div>
           <div className="flex gap-2">
             <button className="btn" onClick={() => {
@@ -90,7 +98,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
         <button onClick={() => onPlanEdit(client.id)}>Plan</button>
         <button className={tab === 'resources' ? 'on' : ''} onClick={() => setTab('resources')}>Resources</button>
         <button className={tab === 'inbox' ? 'on' : ''} onClick={() => setTab('inbox')}>
-          Inbox <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>
+          Inbox {QUESTIONS.filter(q => q.status === 'Open').length > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>}
         </button>
         <button className={tab === 'files' ? 'on' : ''} onClick={() => setTab('files')}>Files</button>
       </div>
@@ -116,10 +124,21 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
                     <div style={{ marginTop: 8 }}><Pill kind={s.status} /></div>
                   </div>
                 ))}
+                {steps.filter(s => s.status !== 'done' && s.status !== 'skip').length === 0 && (
+                  <p className="muted text-sm">No upcoming steps.</p>
+                )}
               </div>
             </div>
             <div className="rail-card">
-              <h4>Contacts</h4>
+              <div className="flex items-center" style={{ marginBottom: (client.contacts || []).length > 0 ? 10 : 0 }}>
+                <h4 style={{ flex: 1, margin: 0 }}>Contacts</h4>
+                {!addingContact && (
+                  <button className="btn ghost sm" onClick={() => { setAddingContact(true); setNewContact({ name: '', role: '', email: '' }); }}>+ Add</button>
+                )}
+              </div>
+              {(client.contacts || []).length === 0 && !addingContact && (
+                <p className="muted text-sm">No contacts yet — add the client's key people.</p>
+              )}
               {(client.contacts || []).map((c, i) => (
                 <div key={i} className="contact">
                   <span className="avatar" style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hairline)' }}>{(c.name || '?').split(' ').map(n => n[0]).join('')}</span>
@@ -136,9 +155,31 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
                   </div>
                 </div>
               ))}
+              {addingContact && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input className="input" placeholder="Name" value={newContact.name} onChange={e => setNewContact(p => ({ ...p, name: e.target.value }))} style={{ fontSize: 13 }} />
+                  <input className="input" placeholder="Role" value={newContact.role} onChange={e => setNewContact(p => ({ ...p, role: e.target.value }))} style={{ fontSize: 13 }} />
+                  <input className="input" placeholder="Email" type="email" value={newContact.email} onChange={e => setNewContact(p => ({ ...p, email: e.target.value }))} style={{ fontSize: 13 }} />
+                  <div className="flex gap-2">
+                    <button
+                      className="btn primary sm"
+                      disabled={!newContact.name.trim()}
+                      onClick={() => {
+                        const updated = [...(client.contacts || []), { name: newContact.name.trim(), role: newContact.role.trim(), email: newContact.email.trim() }];
+                        onEditClient?.(client.id, { contacts: updated });
+                        setAddingContact(false);
+                      }}
+                    >Save</button>
+                    <button className="btn sm" onClick={() => setAddingContact(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="rail-card">
-              <h4>Activity</h4>
+              <div className="flex items-center" style={{ marginBottom: 10 }}>
+                <h4 style={{ flex: 1, margin: 0 }}>Activity</h4>
+                <span className="eyebrow" style={{ fontSize: 10, opacity: 0.5 }}>Sample</span>
+              </div>
               {ACTIVITY.slice(0, 5).map((a, i) => (
                 <div key={i} className="activity-item">
                   <b>{a.who}</b> {a.what} <b>{a.target}</b>
@@ -154,11 +195,18 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
 
       {tab === 'steps' && (
         <div>
-          {PHASES.map(p => {
-            const ps = steps.filter(s => s.phase === p.id);
-            if (!ps.length) return null;
-            return <PhaseGroup key={p.id} phase={p} steps={ps} onStep={onStep} onToggle={onToggleStep} dayIn={client.dayIn} />;
-          })}
+          {steps.length === 0 ? (
+            <div style={{ padding: '48px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>No steps yet.</div>
+              <p className="muted text-sm" style={{ marginTop: 8 }}>This client's onboarding plan hasn't been seeded. Contact an admin to generate the onboarding plan.</p>
+            </div>
+          ) : (
+            PHASES.map(p => {
+              const ps = steps.filter(s => s.phase === p.id);
+              if (!ps.length) return null;
+              return <PhaseGroup key={p.id} phase={p} steps={ps} onStep={onStep} onToggle={onToggleStep} dayIn={client.dayIn} />;
+            })
+          )}
         </div>
       )}
 
