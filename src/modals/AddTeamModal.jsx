@@ -10,8 +10,14 @@ export default function AddTeamModal({ onClose, onSave }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   async function save() {
     if (!name.trim() || !email.trim()) return;
+    if (!EMAIL_RE.test(email.trim())) {
+      setError(`"${email.trim()}" doesn't look like a valid email address.`);
+      return;
+    }
     setLoading(true);
     setError('');
     try {

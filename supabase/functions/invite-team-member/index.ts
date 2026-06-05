@@ -28,6 +28,14 @@ serve(async (req) => {
       });
     }
 
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_RE.test(email.trim())) {
+      return new Response(JSON.stringify({ error: `Email address "${email.trim()}" is invalid` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Admin client uses the service role key (server-side only, never exposed to browser)
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
