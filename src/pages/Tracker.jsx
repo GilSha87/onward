@@ -74,11 +74,12 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             </div>
             <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--ink-muted)', opacity: 0.65, lineHeight: 1 }}>days in onboarding</span>
           </div>
-          <div className="flex gap-2">
-            <button className="btn" onClick={() => {
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--surface)', border: '1px solid var(--hairline)', borderRadius: 'var(--r)', padding: '3px 3px' }}>
+            <button className="btn ghost" style={{ border: 'none', boxShadow: 'none', background: 'transparent' }} onClick={() => {
               setScreen({ kind: 'client', clientId: client.id });
               showToast('Switched to client view — this is what your client sees.', 'success');
             }}>{ICONS.link} Client link</button>
+            <div style={{ width: 1, height: 20, background: 'var(--hairline)', margin: '0 2px', flexShrink: 0 }} />
             <Dropdown items={[
               { label: '60·90·180 Plan', onClick: () => onPlanEdit(client.id) },
               null,
