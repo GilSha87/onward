@@ -190,12 +190,17 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
   letter-spacing: 0;
   white-space: nowrap;
   transition: all .15s ease;
+  border: 1px solid transparent;
 }
-.view-toggle button:hover:not(.on) { color: var(--ink); }
+.view-toggle button:hover:not(.on) { color: var(--ink); border-color: var(--hairline); }
 .view-toggle button.on {
   background: var(--ink);
   color: #fff;
   box-shadow: var(--sh-1);
+  border-color: var(--ink);
+}
+.view-toggle button:not(.on) {
+  border-color: var(--hairline);
 }
 
 .account-chip {
