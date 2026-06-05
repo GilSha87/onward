@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ICONS, PLAN } from '../lib/data';
+import { ICONS, PLAN, QUESTIONS } from '../lib/data';
 import ClientLogo from '../components/ui/ClientLogo';
 import { loadMilestones, saveMilestones, groupByPhase, setPlanStatus, PHASES } from '../lib/plan';
 
@@ -136,6 +136,18 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
 
   return (
     <main className="canvas">
+      <div className="tab-row">
+        <button onClick={onClose}>Overview</button>
+        <button onClick={onClose}>Steps</button>
+        <button onClick={onClose}>Timeline</button>
+        <button className="on">Plan</button>
+        <button onClick={onClose}>Resources</button>
+        <button onClick={onClose}>
+          Inbox {QUESTIONS.filter(q => q.status === 'Open').length > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>}
+        </button>
+        <button onClick={onClose}>Files</button>
+      </div>
+
       <section style={{ paddingBottom: 32, borderBottom: '1px solid var(--hairline)', marginBottom: 40 }}>
         <div className="flex items-center gap-3">
           <ClientLogo client={client} />
@@ -193,21 +205,21 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
                   )}
                   {list.map((m, i) => (
                     editing ? (
-                      <div key={m.id} className="milestone" style={{ alignItems: 'flex-start', gap: 8 }}>
-                        <div className="m-text" style={{ flex: 1 }}>
+                      <div key={m.id} className="milestone" style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <div className="m-text" style={{ flex: 1, minWidth: 0 }}>
                           <input
                             className="input"
                             placeholder="Milestone title"
                             value={m.title}
                             onChange={e => updateMilestone(m.id, { title: e.target.value })}
-                            style={{ fontSize: 13, fontWeight: 600 }}
+                            style={{ fontSize: 13, fontWeight: 600, width: '100%' }}
                           />
                           <input
                             className="input"
                             placeholder="Detail (optional)"
                             value={m.detail || ''}
                             onChange={e => updateMilestone(m.id, { detail: e.target.value })}
-                            style={{ fontSize: 12, marginTop: 6 }}
+                            style={{ fontSize: 12, marginTop: 6, width: '100%' }}
                           />
                         </div>
                         <div className="flex flex-col gap-1">
