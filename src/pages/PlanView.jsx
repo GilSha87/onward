@@ -159,12 +159,9 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
           </div>
           <div style={{ flex: 1 }}></div>
           {editable && !editing && (
-            <>
-              <button className="btn" onClick={() => onShare?.(client.id)}>{ICONS.link} Share with client</button>
-              <button className="btn primary" onClick={() => setEditing(true)} disabled={approved}>
-                {ICONS.spark} Edit milestones
-              </button>
-            </>
+            <button className="btn primary" onClick={() => setEditing(true)} disabled={approved}>
+              {ICONS.spark} Edit milestones
+            </button>
           )}
           {editable && editing && (
             <>
