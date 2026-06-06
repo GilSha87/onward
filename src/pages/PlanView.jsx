@@ -35,6 +35,13 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
 
   const approved = client.planStatus === 'approved' || client.planStatus === 'locked';
 
+  // Header status chip: Draft → Shared → Signed, driven by plan status.
+  const statusChip = approved
+    ? { cls: 'done', label: 'Signed' }
+    : client.planStatus === 'sent'
+      ? { cls: 'progress', label: 'Shared · Awaiting signoff' }
+      : { cls: 'not', label: 'Draft · Not yet shared' };
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -158,6 +165,11 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
             <h1 className="display-2" style={{ marginTop: 10 }}>The first <em style={{ fontStyle: 'normal', fontWeight: 400, color: 'var(--ink-muted)' }}>180 days</em>.</h1>
           </div>
           <div style={{ flex: 1 }}></div>
+          {editable && !editing && (
+            <span className={`pill ${statusChip.cls}`} style={{ marginRight: 4 }}>
+              <span className="dot"></span>{statusChip.label}
+            </span>
+          )}
           {editable && !editing && (
             <button className="btn primary" onClick={() => setEditing(true)} disabled={approved}>
               {ICONS.spark} Edit milestones
