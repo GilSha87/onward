@@ -136,17 +136,19 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
 
   return (
     <main className="canvas">
-      <div className="tab-row">
-        <button onClick={onClose}>Overview</button>
-        <button onClick={onClose}>Steps</button>
-        <button onClick={onClose}>Timeline</button>
-        <button className="on">Plan</button>
-        <button onClick={onClose}>Resources</button>
-        <button onClick={onClose}>
-          Inbox {QUESTIONS.filter(q => q.status === 'Open').length > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>}
-        </button>
-        <button onClick={onClose}>Files</button>
-      </div>
+      {editable && (
+        <div className="tab-row">
+          <button onClick={onClose}>Overview</button>
+          <button onClick={onClose}>Steps</button>
+          <button onClick={onClose}>Timeline</button>
+          <button className="on">Plan</button>
+          <button onClick={onClose}>Resources</button>
+          <button onClick={onClose}>
+            Inbox {QUESTIONS.filter(q => q.status === 'Open').length > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>}
+          </button>
+          <button onClick={onClose}>Files</button>
+        </div>
+      )}
 
       <section style={{ paddingBottom: 32, borderBottom: '1px solid var(--hairline)', marginBottom: 40 }}>
         <div className="flex items-center gap-3">
@@ -246,6 +248,16 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
                           <button className="btn ghost sm" title="Move up" onClick={() => move(m.id, 'up')} disabled={i === 0}>↑</button>
                           <button className="btn ghost sm" title="Move down" onClick={() => move(m.id, 'down')} disabled={i === list.length - 1}>↓</button>
                           <button className="btn ghost sm" title="Remove" onClick={() => removeMilestone(m.id)}>{ICONS.close}</button>
+                        </div>
+                      </div>
+                    ) : !editable ? (
+                      // Client-facing read-only milestone: no internal checkbox,
+                      // owner avatars, or due dates — just the promise.
+                      <div key={m.id} className="milestone milestone-ro">
+                        <span className="m-bullet" />
+                        <div className="m-text">
+                          <b>{m.title}</b>
+                          {m.detail && <div className="muted text-xs" style={{ marginTop: 3 }}>{m.detail}</div>}
                         </div>
                       </div>
                     ) : (

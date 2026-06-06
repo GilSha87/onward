@@ -1469,6 +1469,21 @@ select.input {
   color: #fff;
 }
 
+/* Client-facing read-only milestone — quiet bullet, no internal state */
+.plan-card .milestone.milestone-ro {
+  grid-template-columns: 8px 1fr;
+  align-items: start;
+}
+.plan-card .milestone.milestone-ro .m-bullet {
+  width: 6px; height: 6px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  margin-top: 8px;
+}
+.plan-card:nth-child(1) .milestone.milestone-ro .m-bullet { background: var(--duda); }
+.plan-card:nth-child(2) .milestone.milestone-ro .m-bullet { background: var(--grape); }
+.plan-card:nth-child(3) .milestone.milestone-ro .m-bullet { background: var(--leaf); }
+
 /* Skeleton shimmer — used on the Plan page loading state */
 @keyframes sk-shine {
   0%   { background-position: -400px 0; }
