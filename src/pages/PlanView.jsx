@@ -186,8 +186,28 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
       </section>
 
       {loading ? (
-        <div className="muted text-sm">Loading plan…</div>
+        <div className="plan-grid">
+          {[60, 90, 180].map(phase => (
+            <article key={phase} className="plan-card">
+              <div className="sk" style={{ width: 80, height: 80, borderRadius: 6, marginBottom: 8 }} />
+              <div className="sk" style={{ width: 64, height: 11, marginBottom: 18 }} />
+              <div className="sk" style={{ width: 120, height: 26, marginBottom: 24, borderRadius: 6 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[1, 2, 3].map(n => (
+                  <div key={n} style={{ display: 'grid', gridTemplateColumns: '18px 1fr', gap: 8, alignItems: 'center' }}>
+                    <div className="sk" style={{ width: 18, height: 18, borderRadius: 5 }} />
+                    <div>
+                      <div className="sk" style={{ height: 13, width: `${70 + n * 8}%`, marginBottom: 4 }} />
+                      <div className="sk" style={{ height: 11, width: `${40 + n * 5}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
       ) : (
+        <>
         <div className="plan-grid">
           {PHASES.map(phase => {
             const meta = PHASE_META[phase] || { label: `Day ${phase}`, name: '' };
@@ -255,7 +275,6 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
             );
           })}
         </div>
-      )}
 
       <div className="card card-pad" style={{ marginTop: 40, background: 'var(--paper-soft)' }}>
         {approved ? (
@@ -290,6 +309,8 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
           </div>
         )}
       </div>
+        </>
+      )}
     </main>
   );
 }

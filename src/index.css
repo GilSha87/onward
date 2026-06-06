@@ -1469,6 +1469,18 @@ select.input {
   color: #fff;
 }
 
+/* Skeleton shimmer — used on the Plan page loading state */
+@keyframes sk-shine {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.sk {
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--hairline) 25%, var(--paper-soft) 50%, var(--hairline) 75%);
+  background-size: 800px 100%;
+  animation: sk-shine 1.4s ease infinite;
+}
+
 /* ============================================================
    Right rail
    ============================================================ */
