@@ -5,6 +5,7 @@ import ClientLogo from '../components/ui/ClientLogo';
 import StatusBadge from '../components/ui/StatusBadge';
 import MiniJourney from '../components/ui/MiniJourney';
 import Dropdown from '../components/ui/Dropdown';
+import { usePermissions } from '../hooks/usePermissions';
 
 function currentSeason() {
   const m = new Date().getMonth(); // 0 = Jan
@@ -16,6 +17,10 @@ function currentSeason() {
 }
 
 export default function Dashboard({ clients, setScreen, onAddClient, onEditClient, amName = '' }) {
+  const { can } = usePermissions();
+  const canCreate = can('clients.create');
+  const canEdit = can('clients.edit');
+  const canDeleteArchive = can('records.deleteArchive');
   const [icp, setIcp] = useState('All');
   const [touch, setTouch] = useState('All');
   const [search, setSearch] = useState('');
@@ -173,7 +178,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
         <div className="right">
           <button className={`btn${showFilters ? ' primary' : ''}`} onClick={() => setShowFilters(f => !f)}>{ICONS.filter} {showFilters ? 'Hide filters' : 'More filters'}</button>
           {stats.archived > 0 && <button className={`btn sm${showArchived ? ' primary' : ''}`} onClick={() => setShowArchived(v => !v)}>{showArchived ? 'Hide archived' : `Archived (${stats.archived})`}</button>}
-          <button className="btn primary" onClick={onAddClient}>{ICONS.plus} New client</button>
+          {canCreate && <button className="btn primary" onClick={onAddClient}>{ICONS.plus} New client</button>}
         </div>
       </section>
 
@@ -201,7 +206,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
           <p>Adjust filters or add a new client.</p>
           <div className="empty-actions">
             <button className="btn" onClick={clearFilters}>Clear filters</button>
-            <button className="btn primary" onClick={onAddClient}>{ICONS.plus} New client</button>
+            {canCreate && <button className="btn primary" onClick={onAddClient}>{ICONS.plus} New client</button>}
           </div>
         </div>
       ) : (
@@ -253,12 +258,12 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                   <Dropdown items={[
                     { label: 'Open tracker', onClick: () => setScreen({ kind: 'tracker', clientId: c.id }) },
                     { label: 'Client view', onClick: () => setScreen({ kind: 'client', clientId: c.id }) },
-                    null,
-                    { label: c.status === 'active' || !c.status ? 'Mark inactive' : 'Mark active', onClick: () => onEditClient(c.id, { status: c.status === 'active' || !c.status ? 'inactive' : 'active' }) },
-                    { label: c.status === 'archived' ? 'Unarchive' : 'Archive', onClick: () => onEditClient(c.id, { status: c.status === 'archived' ? 'active' : 'archived' }) },
-                    null,
-                    { label: 'Delete permanently', danger: true, onClick: () => { if (window.confirm('Delete ' + c.name + '?')) onEditClient(c.id, { status: 'deleted' }); } },
-                  ]} />
+                    canEdit ? null : undefined,
+                    canEdit ? { label: c.status === 'active' || !c.status ? 'Mark inactive' : 'Mark active', onClick: () => onEditClient(c.id, { status: c.status === 'active' || !c.status ? 'inactive' : 'active' }) } : undefined,
+                    canDeleteArchive ? { label: c.status === 'archived' ? 'Unarchive' : 'Archive', onClick: () => onEditClient(c.id, { status: c.status === 'archived' ? 'active' : 'archived' }) } : undefined,
+                    canDeleteArchive ? null : undefined,
+                    canDeleteArchive ? { label: 'Delete permanently', danger: true, onClick: () => { if (window.confirm('Delete ' + c.name + '?')) onEditClient(c.id, { status: 'deleted' }); } } : undefined,
+                  ].filter(i => i !== undefined)} />
                 </div>
               </div>
             );

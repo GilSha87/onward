@@ -13,8 +13,12 @@ import Gantt from '../components/journey/Gantt';
 import InboxPanel from './InboxPanel';
 import FilesPanel from '../components/files/FilesPanel';
 import { fmtMoney, arrFromMrr } from '../lib/helpers';
+import { usePermissions } from '../hooks/usePermissions';
 
 export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, onToggleStep, onEditClient }) {
+  const { can } = usePermissions();
+  const canEdit = can('clients.edit');
+  const canDeleteArchive = can('records.deleteArchive');
   const [tab, setTab] = useState('overview');
   const [addingContact, setAddingContact] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', role: '', email: '' });
@@ -82,12 +86,12 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             <div style={{ width: 1, height: 20, background: 'var(--hairline)', margin: '0 2px', flexShrink: 0 }} />
             <Dropdown items={[
               { label: '60·90·180 Plan', onClick: () => onPlanEdit(client.id) },
-              null,
-              { label: client.status === 'active' || !client.status ? 'Mark inactive' : 'Mark active', onClick: () => onEditClient?.(client.id, { status: client.status === 'active' || !client.status ? 'inactive' : 'active' }) },
-              { label: client.status === 'archived' ? 'Unarchive' : 'Archive', onClick: () => onEditClient?.(client.id, { status: client.status === 'archived' ? 'active' : 'archived' }) },
-              null,
-              { label: 'Delete permanently', danger: true, onClick: () => { if (window.confirm('Delete ' + client.name + '?')) onEditClient?.(client.id, { status: 'deleted' }); } },
-            ]} />
+              canEdit ? null : undefined,
+              canEdit ? { label: client.status === 'active' || !client.status ? 'Mark inactive' : 'Mark active', onClick: () => onEditClient?.(client.id, { status: client.status === 'active' || !client.status ? 'inactive' : 'active' }) } : undefined,
+              canDeleteArchive ? { label: client.status === 'archived' ? 'Unarchive' : 'Archive', onClick: () => onEditClient?.(client.id, { status: client.status === 'archived' ? 'active' : 'archived' }) } : undefined,
+              canDeleteArchive ? null : undefined,
+              canDeleteArchive ? { label: 'Delete permanently', danger: true, onClick: () => { if (window.confirm('Delete ' + client.name + '?')) onEditClient?.(client.id, { status: 'deleted' }); } } : undefined,
+            ].filter(i => i !== undefined)} />
           </div>
         </div>
       </header>
@@ -133,7 +137,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             <div className="rail-card">
               <div className="flex items-center" style={{ marginBottom: (client.contacts || []).length > 0 ? 10 : 0 }}>
                 <h4 style={{ flex: 1, margin: 0 }}>Contacts</h4>
-                {!addingContact && (
+                {!addingContact && canEdit && (
                   <button className="btn ghost sm" onClick={() => { setAddingContact(true); setNewContact({ name: '', role: '', email: '' }); }}>+ Add</button>
                 )}
               </div>

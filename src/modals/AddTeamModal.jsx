@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { db } from '../lib/supabase';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
+import { ROLES, ROLE_LABELS } from '../lib/permissions';
+
+// Short descriptors shown under each role option in the picker.
+const ROLE_SUBS = {
+  Staff: 'Own clients',
+  Executive: 'Approve · read-only',
+  Admin: 'Full access',
+};
 
 export default function AddTeamModal({ onClose, onSave }) {
   const [name, setName] = useState('');
@@ -64,19 +72,15 @@ export default function AddTeamModal({ onClose, onSave }) {
         <div className="field" style={{ marginBottom: 18 }}>
           <label>Role *</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            {[
-              { k: 'Staff', label: 'Staff (AM)', sub: 'Own clients' },
-              { k: 'Executive', label: 'Executive', sub: 'Read-only org' },
-              { k: 'Admin', label: 'Admin', sub: 'Full access' },
-            ].map(o => (
-              <button key={o.k} onClick={() => setRole(o.k)} className="card card-pad"
+            {ROLES.map(k => (
+              <button key={k} onClick={() => setRole(k)} className="card card-pad"
                 style={{
                   padding: 12, textAlign: 'left', cursor: 'pointer',
-                  borderColor: role === o.k ? 'var(--ink)' : 'var(--hairline)',
-                  background: role === o.k ? 'var(--paper)' : 'var(--surface)',
+                  borderColor: role === k ? 'var(--ink)' : 'var(--hairline)',
+                  background: role === k ? 'var(--paper)' : 'var(--surface)',
                 }}>
-                <div className="text-sm semibold">{o.label}</div>
-                <div className="muted text-xs" style={{ marginTop: 2 }}>{o.sub}</div>
+                <div className="text-sm semibold">{ROLE_LABELS[k]}</div>
+                <div className="muted text-xs" style={{ marginTop: 2 }}>{ROLE_SUBS[k]}</div>
               </button>
             ))}
           </div>
