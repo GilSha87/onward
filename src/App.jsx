@@ -6,6 +6,7 @@ import { dbRowToClient, clientToDbRow, dbRowToStep, stepToDbRow } from './lib/db
 import { reportApiError } from './lib/monitoring';
 import ToastProvider, { showToast } from './components/ui/Toast';
 import { TweaksPanel, TweakSection, TweakToggle, TweakRadio, TweakColor, TweakSelect, useTweaks } from './components/TweaksPanel';
+import { PermissionsProvider } from './hooks/usePermissions';
 import Topbar from './components/layout/Topbar';
 import Dashboard from './pages/Dashboard';
 import Tracker from './pages/Tracker';
@@ -32,13 +33,13 @@ const TWEAK_DEFAULTS = {
 
 function userFromSession(session) {
   const u = session?.user;
-  if (!u) return { name: '', initials: '—' };
+  if (!u) return { id: null, name: '', initials: '—', role: null };
   const name = u.user_metadata?.full_name || u.email || '';
   const parts = name.split(' ').filter(Boolean);
   const initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase() || '—';
-  return { name, initials };
+  return { id: u.id, name, initials, role: u.user_metadata?.role || null };
 }
 
 // Detect a Supabase invite/signup token embedded in the URL hash fragment.
@@ -107,7 +108,8 @@ export default function App() {
   const [clients, setClients] = useState([]);
   const [stepsByClient, setStepsByClient] = useState({});
   const [team, setTeam] = useState([]);
-  const [currentUser, setCurrentUser] = useState({ name: '', initials: '—' });
+  const [auditLog, setAuditLog] = useState([]);
+  const [currentUser, setCurrentUser] = useState({ id: null, name: '', initials: '—', role: null });
   const [loadingClients, setLoadingClients] = useState(true);
   const [apiNotice, setApiNotice] = useState(null);
   const loadedClients = useRef(new Set());
@@ -126,7 +128,7 @@ export default function App() {
         setCurrentUser(userFromSession(session));
       } else if (!DEV || t.showLogin) {
         setAuthed(false);
-        setCurrentUser({ name: '', initials: '—' });
+        setCurrentUser({ id: null, name: '', initials: '—', role: null });
       }
     });
     return () => subscription.unsubscribe();
@@ -150,6 +152,30 @@ export default function App() {
       setApiNotice("We couldn't load your live clients, so you're seeing sample data.");
       setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
     }).finally(() => setLoadingClients(false));
+  }, [authed]);
+
+  // Resolve the current user's access role (team_members is the source of truth).
+  // Falls back to the invite metadata, then a bootstrap default so the very
+  // first/owner user isn't locked out before any team has been set up.
+  useEffect(() => {
+    if (!authed) return;
+    let alive = true;
+    (async () => {
+      const { data: { session } } = await db.auth.getSession();
+      const uid = session?.user?.id;
+      const metaRole = session?.user?.user_metadata?.role;
+      // No session (e.g. dev bypass): treat as Admin so the app is usable.
+      if (!uid) { if (alive) setCurrentUser(prev => ({ ...prev, role: 'Admin' })); return; }
+      let role = null;
+      const { data } = await db.from('team_members').select('role').eq('user_id', uid).maybeSingle();
+      role = data?.role || metaRole || null;
+      if (!role) {
+        const { count } = await db.from('team_members').select('id', { count: 'exact', head: true });
+        role = count && count > 0 ? 'Staff' : 'Admin';
+      }
+      if (alive) setCurrentUser(prev => ({ ...prev, role }));
+    })();
+    return () => { alive = false; };
   }, [authed]);
 
   // Load team members from Supabase
@@ -180,6 +206,17 @@ export default function App() {
         }));
       }
     });
+  }, [authed]);
+
+  // Load the access-change audit log (visible to audit.view holders). The table
+  // is created by the three-role migration; until applied this errors quietly.
+  useEffect(() => {
+    if (!authed) return;
+    db.from('access_audit_log')
+      .select('*')
+      .order('changed_at', { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => { if (!error && data) setAuditLog(data); });
   }, [authed]);
 
   useEffect(() => { setView(t.viewMode); }, [t.viewMode]);
@@ -341,12 +378,44 @@ export default function App() {
       .then(({ error }) => { if (error) reportApiError('steps.update', error, { stepId: updated.id }); });
   }
 
+  // Last-admin protection (UI layer; also enforced by a DB trigger).
+  function isLastAdmin(id) {
+    const admins = team.filter(m => m.role === 'Admin');
+    return admins.length <= 1 && admins.some(m => m.id === id);
+  }
+
   function deleteMember(id) {
+    if (isLastAdmin(id)) {
+      showToast('Cannot remove the last remaining Admin.', 'error');
+      return;
+    }
+    const prevTeam = team;
     setTeam(prev => prev.filter(m => m.id !== id));
     db.from('team_members').delete().eq('id', id).then(({ error }) => {
       if (error) {
         reportApiError('team_members.delete', error, { id });
         showToast('Failed to remove team member.', 'error');
+        setTeam(prevTeam);
+      }
+    });
+  }
+
+  function changeMemberRole(id, newRole) {
+    const member = team.find(m => m.id === id);
+    if (!member || member.role === newRole) return;
+    if (member.role === 'Admin' && newRole !== 'Admin' && isLastAdmin(id)) {
+      showToast('Cannot demote the last remaining Admin.', 'error');
+      return;
+    }
+    const prevRole = member.role;
+    setTeam(prev => prev.map(m => (m.id === id ? { ...m, role: newRole } : m)));
+    db.from('team_members').update({ role: newRole }).eq('id', id).then(({ error }) => {
+      if (error) {
+        reportApiError('team_members.role', error, { id });
+        showToast('Failed to change role.', 'error');
+        setTeam(prev => prev.map(m => (m.id === id ? { ...m, role: prevRole } : m)));
+      } else {
+        showToast(`${member.name} is now ${newRole}.`, 'success');
       }
     });
   }
@@ -354,7 +423,7 @@ export default function App() {
   function signOut() {
     db.auth.signOut().then(() => {
       setAuthed(false);
-      setCurrentUser({ name: '', initials: '—' });
+      setCurrentUser({ id: null, name: '', initials: '—', role: null });
     });
   }
 
@@ -425,7 +494,7 @@ export default function App() {
   const clientSteps = client ? (stepsByClient[client.id] || []) : [];
 
   return (
-    <>
+    <PermissionsProvider role={currentUser.role}>
       <ToastProvider />
       {apiNotice && (
         <div
@@ -549,7 +618,14 @@ export default function App() {
         </ErrorBoundary>
       )}
       {effectiveScreen.kind === 'team' && (
-        <TeamPage team={team} onAdd={() => setModal({ kind: 'addTeam' })} onDeleteMember={deleteMember} />
+        <TeamPage
+          team={team}
+          onAdd={() => setModal({ kind: 'addTeam' })}
+          onDeleteMember={deleteMember}
+          onChangeRole={changeMemberRole}
+          currentUserId={currentUser.id}
+          auditLog={auditLog}
+        />
       )}
 
       {modal?.kind === 'addClient' && (
@@ -642,6 +718,6 @@ export default function App() {
         </TweakSection>
       </TweaksPanel>
       )}
-    </>
+    </PermissionsProvider>
   );
 }
