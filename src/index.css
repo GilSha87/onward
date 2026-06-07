@@ -1666,6 +1666,42 @@ select.input {
   grid-template-columns: repeat(3, 1fr);
   gap: var(--s-5);
 }
+
+/* Role cards + permission matrix (Team Access) */
+.role-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-5);
+  margin-bottom: 16px;
+}
+.role-card { background: var(--surface); }
+.perm-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.perm-matrix th, .perm-matrix td {
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.perm-matrix thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  font-weight: 700;
+  background: var(--paper-soft);
+}
+.perm-matrix tbody tr:last-child td { border-bottom: none; }
+.perm-matrix td { color: var(--ink); font-weight: 500; }
+.perm-yes { color: #0E6E4B; display: inline-flex; }
+.perm-no { color: var(--ink-faint); font-weight: 600; }
+.audit-table th, .audit-table td { font-size: 12.5px; }
+
+@media (max-width: 1100px) {
+  .role-cards { grid-template-columns: 1fr; }
+}
 .team-card {
   background: var(--surface);
   border: 1px solid var(--hairline);
