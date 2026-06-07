@@ -60,9 +60,7 @@ export default function Gantt({ steps, dayIn = 0 }) {
                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.title}</span>
                   </div>
                   <div className="lane">
-                    <div className={`gantt-bar ${s.status}`} style={barFor(s)} title={`${s.title} · day ${s.start}–${s.due}`}>
-                      {s.title}
-                    </div>
+                    <div className={`gantt-bar ${s.status}`} style={barFor(s)} title={`${s.title} · day ${s.start}–${s.due}`} />
                   </div>
                 </div>
               ))}
