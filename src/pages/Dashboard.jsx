@@ -184,7 +184,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
 
       {showFilters && (
         <div className="filter-panel">
-          <div className="field"><label>Build flow</label><select className="input" value={flowFilter} onChange={e => setFlowFilter(e.target.value)}><option>All</option><option>DIY</option><option>DIFM</option><option>Hybrid</option><option>Migration</option><option>Marketplace / Add-on</option></select></div>
+          <div className="field"><label>Build flow</label><select className="input" value={flowFilter} onChange={e => setFlowFilter(e.target.value)}><option>All</option><option>DIY</option><option>DIFM</option><option>Hybrid</option></select></div>
           <div className="field"><label>Assigned AM</label><select className="input" value={amFilter} onChange={e => setAmFilter(e.target.value)}><option>All</option>{ams.map(a => <option key={a}>{a}</option>)}</select></div>
           <div className="flex items-end"><button className="btn sm ghost" onClick={clearFilters}>Clear all filters</button></div>
         </div>

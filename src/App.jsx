@@ -110,6 +110,7 @@ export default function App() {
   const [team, setTeam] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
   const [currentUser, setCurrentUser] = useState({ id: null, name: '', initials: '—', role: null });
+  const [roleResolved, setRoleResolved] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
   const [apiNotice, setApiNotice] = useState(null);
   const loadedClients = useRef(new Set());
@@ -157,23 +158,32 @@ export default function App() {
   // Resolve the current user's access role (team_members is the source of truth).
   // Falls back to the invite metadata, then a bootstrap default so the very
   // first/owner user isn't locked out before any team has been set up.
+  // `roleResolved` gates the app shell so role-dependent UI never renders with a
+  // stale/null role and then mutates once the lookup completes.
   useEffect(() => {
-    if (!authed) return;
+    if (!authed) { setRoleResolved(false); return; }
     let alive = true;
     (async () => {
-      const { data: { session } } = await db.auth.getSession();
-      const uid = session?.user?.id;
-      const metaRole = session?.user?.user_metadata?.role;
-      // No session (e.g. dev bypass): treat as Admin so the app is usable.
-      if (!uid) { if (alive) setCurrentUser(prev => ({ ...prev, role: 'Admin' })); return; }
-      let role = null;
-      const { data } = await db.from('team_members').select('role').eq('user_id', uid).maybeSingle();
-      role = data?.role || metaRole || null;
-      if (!role) {
-        const { count } = await db.from('team_members').select('id', { count: 'exact', head: true });
-        role = count && count > 0 ? 'Staff' : 'Admin';
+      try {
+        const { data: { session } } = await db.auth.getSession();
+        const uid = session?.user?.id;
+        const metaRole = session?.user?.user_metadata?.role;
+        // No session (e.g. dev bypass): treat as Admin so the app is usable.
+        if (!uid) { if (alive) setCurrentUser(prev => ({ ...prev, role: 'Admin' })); return; }
+        let role = null;
+        const { data } = await db.from('team_members').select('role').eq('user_id', uid).maybeSingle();
+        role = data?.role || metaRole || null;
+        if (!role) {
+          const { count } = await db.from('team_members').select('id', { count: 'exact', head: true });
+          role = count && count > 0 ? 'Staff' : 'Admin';
+        }
+        if (alive) setCurrentUser(prev => ({ ...prev, role }));
+      } catch {
+        // On failure, fall back to least privilege so the UI still resolves.
+        if (alive) setCurrentUser(prev => ({ ...prev, role: prev.role || 'Staff' }));
+      } finally {
+        if (alive) setRoleResolved(true);
       }
-      if (alive) setCurrentUser(prev => ({ ...prev, role }));
     })();
     return () => { alive = false; };
   }, [authed]);
@@ -487,6 +497,22 @@ export default function App() {
   }
 
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+
+  // Hold the app shell until the access role is known, so role-gated UI doesn't
+  // render with a null role and then visibly mutate once the lookup resolves.
+  if (!roleResolved) {
+    return (
+      <div
+        role="status"
+        style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, opacity: 0.6, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
 
   const effectiveScreen = (view === 'client' && screen.kind === 'tracker') ? { ...screen, kind: 'client' }
     : (view === 'am' && screen.kind === 'client') ? { ...screen, kind: 'tracker' } : screen;

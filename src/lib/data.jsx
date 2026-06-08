@@ -8,7 +8,7 @@ export const PHASES = [
   { id: 'p4',  num: '04', name: 'Pilot, Launch & Scale',  short: 'Scale',   blurb: 'Sites live, expand' },
 ];
 
-export const FLOWS = ['DIY', 'DIFM', 'Hybrid', 'Migration', 'Marketplace / Add-on'];
+export const FLOWS = ['DIY', 'DIFM', 'Hybrid'];
 
 export const SEGMENTS = ['Agency', 'SaaS', 'Hosting', 'Listing / YP', 'POS / eCommerce'];
 
