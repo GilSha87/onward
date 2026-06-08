@@ -135,24 +135,31 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load clients from Supabase once authenticated
+  // Load clients from Supabase once authenticated.
+  // On error we DON'T swap in demo data in production — that caused the live
+  // portfolio to flip to a different set of fake clients on any transient
+  // failure. Sample data is a dev-only convenience (e.g. no local .env).
+  function handleClientsError(error) {
+    reportApiError('clients.select', error);
+    if (DEV) {
+      setApiNotice('Dev: could not load live clients — showing sample data.');
+      setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
+    } else {
+      setApiNotice("We couldn't refresh your clients just now. Please reload the page.");
+      // Keep whatever real clients are already loaded; never replace with demos.
+    }
+  }
   useEffect(() => {
     if (!authed) return;
     db.from('clients').select('*').then(({ data, error }) => {
       if (error) {
-        reportApiError('clients.select', error);
-        setApiNotice("We couldn't load your live clients, so you're seeing sample data.");
-        setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
+        handleClientsError(error);
       } else if (data && data.length > 0) {
         setClients(data.map(dbRowToClient));
       } else {
         setClients([]);
       }
-    }).catch((error) => {
-      reportApiError('clients.select', error);
-      setApiNotice("We couldn't load your live clients, so you're seeing sample data.");
-      setClients(SAMPLE_CLIENTS.map(c => ({ ...c, status: c.status || 'active' })));
-    }).finally(() => setLoadingClients(false));
+    }).catch(handleClientsError).finally(() => setLoadingClients(false));
   }, [authed]);
 
   // Resolve the current user's access role (team_members is the source of truth).
