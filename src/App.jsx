@@ -31,15 +31,17 @@ const TWEAK_DEFAULTS = {
   paperTone: 'warm',
 };
 
+// Identity only — NOT role. Role is resolved separately from team_members so a
+// stale user_metadata.role can never clobber the authoritative DB value.
 function userFromSession(session) {
   const u = session?.user;
-  if (!u) return { id: null, name: '', initials: '—', role: null };
+  if (!u) return { id: null, name: '', initials: '—' };
   const name = u.user_metadata?.full_name || u.email || '';
   const parts = name.split(' ').filter(Boolean);
   const initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase() || '—';
-  return { id: u.id, name, initials, role: u.user_metadata?.role || null };
+  return { id: u.id, name, initials };
 }
 
 // Detect a Supabase invite/signup token embedded in the URL hash fragment.
@@ -120,13 +122,15 @@ export default function App() {
     db.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setAuthed(true);
-        setCurrentUser(userFromSession(session));
+        setCurrentUser(prev => ({ ...prev, ...userFromSession(session) }));
       }
     });
     const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setAuthed(true);
-        setCurrentUser(userFromSession(session));
+        // Merge identity only; keep the resolved role so token refreshes don't
+        // revert the user to a stale role and flip the view.
+        setCurrentUser(prev => ({ ...prev, ...userFromSession(session) }));
       } else if (!DEV || t.showLogin) {
         setAuthed(false);
         setCurrentUser({ id: null, name: '', initials: '—', role: null });
@@ -174,12 +178,19 @@ export default function App() {
       try {
         const { data: { session } } = await db.auth.getSession();
         const uid = session?.user?.id;
-        const metaRole = session?.user?.user_metadata?.role;
         // No session (e.g. dev bypass): treat as Admin so the app is usable.
         if (!uid) { if (alive) setCurrentUser(prev => ({ ...prev, role: 'Admin' })); return; }
+        // team_members is the single source of truth for role. We deliberately
+        // do NOT fall back to user_metadata.role, which can disagree (e.g. an
+        // old invite said Executive) and cause the view to flip.
         let role = null;
-        const { data } = await db.from('team_members').select('role').eq('user_id', uid).maybeSingle();
-        role = data?.role || metaRole || null;
+        const { data } = await db.from('team_members')
+          .select('role')
+          .eq('user_id', uid)
+          .order('role', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        role = data?.role || null;
         if (!role) {
           const { count } = await db.from('team_members').select('id', { count: 'exact', head: true });
           role = count && count > 0 ? 'Staff' : 'Admin';
