@@ -1,20 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import i18next from 'i18next';
 import { ICONS } from '../lib/data';
 import { loadPlanByToken, approvePlanByToken, groupByPhase, PHASES } from '../lib/plan';
 
-const PHASE_META = {
-  60:  { label: 'Foundation', name: 'Set the table.' },
-  90:  { label: 'Go-live',    name: 'Make it real.' },
-  180: { label: 'Scale',      name: 'Compound.' },
+// Map the client's stored language label to an i18n code (mirrors ClientView).
+const LANG_MAP = {
+  'English': 'en',
+  'עברית': 'he',
+  'Español': 'es',
+  'Nederlands': 'nl',
+  'Deutsch': 'de',
+  'Français': 'fr',
+  'Português': 'pt',
+  '日本語': 'ja',
 };
 
 const OWNER_COLORS = { DD: '#0B0B0F', CL: '#FB673E', BO: '#6D5BFF' };
-const OWNER_LABELS = { DD: 'Duda', CL: 'Client', BO: 'Both' };
 
-function fmtDate(iso) {
+function fmtDate(iso, locale) {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    return new Date(iso).toLocaleDateString(locale || undefined, { year: 'numeric', month: 'long', day: 'numeric' });
   } catch {
     return iso;
   }
@@ -26,6 +32,16 @@ export default function PublicPlanView({ token }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [approved, setApproved] = useState(null); // { by, at } once approved this session
+
+  // Render in the client's language once the plan loads; fall back to English.
+  const langCode = LANG_MAP[state.plan?.client?.lang] || 'en';
+  const t = i18next.getFixedT(langCode);
+
+  const ownerLabel = (o) =>
+    o === 'DD' ? 'Duda'
+    : o === 'CL' ? t('publicPlan.owner_client')
+    : o === 'BO' ? t('publicPlan.owner_both')
+    : o;
 
   useEffect(() => {
     let alive = true;
@@ -44,14 +60,14 @@ export default function PublicPlanView({ token }) {
   async function approve() {
     if (busy) return;
     const who = name.trim();
-    if (!who) { setError('Please enter your name to approve.'); return; }
+    if (!who) { setError(t('publicPlan.enter_name_error')); return; }
     setBusy(true);
     setError('');
     try {
       await approvePlanByToken(token, state.plan.client.id, who);
       setApproved({ by: who, at: new Date().toISOString() });
     } catch (err) {
-      setError(err?.message || 'Could not record your approval. Please try again.');
+      setError(err?.message || t('publicPlan.generic_error'));
     }
     setBusy(false);
   }
@@ -59,7 +75,7 @@ export default function PublicPlanView({ token }) {
   if (state.status === 'loading') {
     return (
       <main className="canvas" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
-        <div className="muted text-sm">Loading plan…</div>
+        <div className="muted text-sm">{t('publicPlan.loading')}</div>
       </main>
     );
   }
@@ -68,11 +84,8 @@ export default function PublicPlanView({ token }) {
     return (
       <main className="canvas" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
         <div style={{ textAlign: 'center', maxWidth: 420 }}>
-          <h1 className="h1" style={{ marginBottom: 10 }}>Link unavailable</h1>
-          <p className="muted text-sm">
-            This share link is invalid, has expired, or was revoked. Please ask your
-            account manager for a fresh link.
-          </p>
+          <h1 className="h1" style={{ marginBottom: 10 }}>{t('publicPlan.invalid_title')}</h1>
+          <p className="muted text-sm">{t('publicPlan.invalid_body')}</p>
         </div>
       </main>
     );
@@ -84,27 +97,26 @@ export default function PublicPlanView({ token }) {
   return (
     <main className="canvas">
       <section style={{ paddingBottom: 32, borderBottom: '1px solid var(--hairline)', marginBottom: 40 }}>
-        <div className="eyebrow">{client.name} · Onboarding plan</div>
-        <h1 className="display-2" style={{ marginTop: 10 }}>
-          The first <em style={{ fontStyle: 'normal', fontWeight: 400, color: 'var(--ink-muted)' }}>180 days</em>.
-        </h1>
+        <div className="eyebrow">{t('publicPlan.eyebrow', { name: client.name })}</div>
+        <h1 className="display-2" style={{ marginTop: 10 }}>{t('publicPlan.headline')}</h1>
         <p className="lede" style={{ maxWidth: 720, marginTop: 24 }}>
-          A shared plan for {client.name}. Review the milestones below and approve when you're ready.
+          {t('publicPlan.lede', { name: client.name })}
         </p>
       </section>
 
       <div className="plan-grid">
         {PHASES.map(phase => {
-          const meta = PHASE_META[phase] || { label: `Day ${phase}`, name: '' };
+          const label = t('publicPlan.phase_label_' + phase, { defaultValue: `${phase}` });
+          const pname = t('publicPlan.phase_name_' + phase, { defaultValue: '' });
           const list = grouped[phase] || [];
           return (
             <article key={phase} className="plan-card">
-              <div className="day-mark"><span className="tabnum">{phase}</span><sup>days</sup></div>
-              <div className="day-label">{meta.label}</div>
-              {meta.name && <h3 className="plan-name">{meta.name}</h3>}
+              <div className="day-mark"><span className="tabnum">{phase}</span><sup>{t('publicPlan.days')}</sup></div>
+              <div className="day-label">{label}</div>
+              {pname && <h3 className="plan-name">{pname}</h3>}
               <div className="milestones">
                 {list.length === 0 ? (
-                  <div className="muted text-xs" style={{ padding: '6px 0' }}>No milestones in this phase.</div>
+                  <div className="muted text-xs" style={{ padding: '6px 0' }}>{t('publicPlan.no_milestones')}</div>
                 ) : list.map(m => (
                   <div key={m.id} className={`milestone ${m.done ? 'done' : ''}`}>
                     <span className="m-dot">{m.done && ICONS.check}</span>
@@ -114,7 +126,7 @@ export default function PublicPlanView({ token }) {
                       {m.owner && (
                         <div className="m-meta">
                           <span className="m-owner-av" style={{ background: OWNER_COLORS[m.owner] || 'var(--ink)' }}>{m.owner}</span>
-                          <span>{OWNER_LABELS[m.owner] || m.owner}</span>
+                          <span>{ownerLabel(m.owner)}</span>
                         </div>
                       )}
                     </div>
@@ -131,31 +143,32 @@ export default function PublicPlanView({ token }) {
         {approved ? (
           <div className="flex items-center justify-between">
             <div>
-              <div className="eyebrow">Client signoff</div>
+              <div className="eyebrow">{t('publicPlan.signoff')}</div>
               <p style={{ fontFamily: 'var(--serif)', fontSize: 18, marginTop: 6, fontStyle: 'italic' }}>
-                Approved by <b style={{ fontStyle: 'normal' }}>{approved.by}</b>
-                {approved.at && <> on <span className="num">{fmtDate(approved.at)}</span></>}.
+                {approved.at
+                  ? t('publicPlan.approved_line', { by: approved.by, date: fmtDate(approved.at, langCode) })
+                  : t('publicPlan.approved_line_nodate', { by: approved.by })}
               </p>
             </div>
-            <span className="pill done"><span className="dot"></span>Plan approved</span>
+            <span className="pill done"><span className="dot"></span>{t('publicPlan.plan_approved')}</span>
           </div>
         ) : (
           <div>
-            <div className="eyebrow">Approve this plan</div>
+            <div className="eyebrow">{t('publicPlan.approve_title')}</div>
             <p className="text-sm muted" style={{ marginTop: 6, marginBottom: 16 }}>
-              Confirm you've reviewed the 60·90·180 plan. Type your name to record your approval.
+              {t('publicPlan.approve_desc')}
             </p>
             <div className="flex items-center gap-2" style={{ maxWidth: 520 }}>
               <input
                 className="input"
-                placeholder="Your full name"
+                placeholder={t('publicPlan.name_placeholder')}
                 value={name}
                 onChange={e => { setName(e.target.value); setError(''); }}
                 onKeyDown={e => { if (e.key === 'Enter') approve(); }}
                 style={{ flex: 1 }}
               />
               <button className="btn primary" onClick={approve} disabled={busy || !name.trim()}>
-                {busy ? 'Saving…' : <>{ICONS.check} Approve plan</>}
+                {busy ? t('publicPlan.saving') : <>{ICONS.check} {t('publicPlan.approve_button')}</>}
               </button>
             </div>
             {error && <div className="text-xs" style={{ color: 'var(--bad, #c0392b)', marginTop: 12 }}>{error}</div>}
@@ -164,7 +177,7 @@ export default function PublicPlanView({ token }) {
       </div>
 
       <p className="muted text-xs" style={{ textAlign: 'center', marginTop: 28 }}>
-        Powered by Onward · This link is private to {client.name}.
+        {t('publicPlan.footer', { name: client.name })}
       </p>
     </main>
   );

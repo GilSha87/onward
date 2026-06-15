@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import i18next from 'i18next';
 import { PHASES, ICONS, CLIENT_RESOURCES } from '../lib/data';
-import { nextMilestoneForPhase } from '../lib/helpers';
 import Pill from '../components/ui/Pill';
 import ProgressRing from '../components/ui/ProgressRing';
 import JourneyStrip from '../components/journey/JourneyStrip';
@@ -67,12 +66,12 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
             <ProgressRing pct={pct} />
             <div className="meta">
               <div className="label">{t('clientView.you_are_here')}</div>
-              <div className="value">{PHASES[phaseIdx]?.name}</div>
+              <div className="value">{t('phases.' + (PHASES[phaseIdx]?.id || 'pre'))}</div>
               <div className="sub">{t('clientView.progress_steps', { done: progress.done, total: progress.total, am: amName })}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="label" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--ink-muted)', fontWeight: 500 }}>{t('clientView.next_milestone')}</div>
-              <div style={{ fontSize: 22, marginTop: 4, fontWeight: 700 }}>{nextMilestoneForPhase(client.phase)}</div>
+              <div style={{ fontSize: 22, marginTop: 4, fontWeight: 700 }}>{t('milestones.' + client.phase)}</div>
             </div>
           </div>
         </div>
