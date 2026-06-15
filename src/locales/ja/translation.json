@@ -154,6 +154,7 @@
   },
   "clientView": {
     "greeting": "おかえりなさい、{{name}}さん。",
+    "welcome_back": "おかえりなさい。",
     "heading": "あなたのオンボーディング、180日中{{day}}日目。",
     "you_are_here": "現在地",
     "next_milestone": "次のマイルストーン",

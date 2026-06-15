@@ -61,8 +61,8 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
       <section className="client-mast">
         <div className="container">
           <div className="client-mast-logo"><ClientLogo client={client} size="lg" /></div>
-          <p className="client-greeting">{firstName ? t('clientView.greeting', { name: firstName }) : 'Welcome back.'}</p>
-          <h1 className="client-title">Your <em>onboarding</em>,<br/>day <span className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>{client.dayIn}</span> of <span className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>180</span>.</h1>
+          <p className="client-greeting">{firstName ? t('clientView.greeting', { name: firstName }) : t('clientView.welcome_back')}</p>
+          <h1 className="client-title">{t('clientView.heading', { day: client.dayIn })}</h1>
           <div className="client-progress">
             <ProgressRing pct={pct} />
             <div className="meta">

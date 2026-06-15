@@ -154,6 +154,7 @@
   },
   "clientView": {
     "greeting": "Willkommen zurück, {{name}}.",
+    "welcome_back": "Willkommen zurück.",
     "heading": "Ihr Onboarding, Tag {{day}} von 180.",
     "you_are_here": "Sie sind hier",
     "next_milestone": "Nächster Meilenstein",

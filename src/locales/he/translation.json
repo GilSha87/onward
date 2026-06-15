@@ -154,6 +154,7 @@
   },
   "clientView": {
     "greeting": "ברוך שובך, {{name}}.",
+    "welcome_back": "ברוך שובך.",
     "heading": "ההטמעה שלך, יום {{day}} מתוך 180.",
     "you_are_here": "אתה כאן",
     "next_milestone": "אבן הדרך הבאה",
