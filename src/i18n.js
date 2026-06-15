@@ -32,7 +32,24 @@ export function applyDir(lang) {
   }
 }
 
+// Safety net for any locale value still left as an untranslated placeholder of
+// the form "[TRANSLATE: English text]". The English source is embedded in the
+// brackets, so we strip the wrapper and return that text instead of leaking the
+// raw "[TRANSLATE: …]" marker into the UI.
+const stripTranslatePlaceholder = {
+  type: 'postProcessor',
+  name: 'stripTranslatePlaceholder',
+  process(value) {
+    if (typeof value === 'string') {
+      const m = value.match(/^\[TRANSLATE:\s*([\s\S]*)\]$/);
+      if (m) return m[1];
+    }
+    return value;
+  },
+};
+
 i18n
+  .use(stripTranslatePlaceholder)
   .use(initReactI18next)
   .init({
     resources: {
@@ -45,6 +62,7 @@ i18n
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
     returnEmptyString: false,
+    postProcess: ['stripTranslatePlaceholder'],
   });
 
 // Persist + apply direction whenever language changes.

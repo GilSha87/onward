@@ -85,6 +85,7 @@ export function nextMilestoneForPhase(phaseId) {
 export const SORTERS = {
   name:     (a, b) => a.name.localeCompare(b.name),
   dayIn:    (a, b) => b.dayIn - a.dayIn,
+  mrr:      (a, b) => (Number(b.mrr) || 0) - (Number(a.mrr) || 0),
   progress: (a, b) => {
     const pa = (a.progress.done / a.progress.total) || 0;
     const pb = (b.progress.done / b.progress.total) || 0;

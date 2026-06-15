@@ -7,6 +7,7 @@ import ProgressRing from '../components/ui/ProgressRing';
 import JourneyStrip from '../components/journey/JourneyStrip';
 import Gantt from '../components/journey/Gantt';
 import ResourcesPanel from '../components/ui/ResourcesPanel';
+import ClientLogo from '../components/ui/ClientLogo';
 
 const LANG_MAP = {
   'English': 'en',
@@ -54,6 +55,7 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
     <div className="client-shell">
       <section className="client-mast">
         <div className="container">
+          <div className="client-mast-logo"><ClientLogo client={client} size="lg" /></div>
           <p className="client-greeting">{firstName ? t('clientView.greeting', { name: firstName }) : 'Welcome back.'}</p>
           <h1 className="client-title">Your <em>onboarding</em>,<br/>day <span className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>{client.dayIn}</span> of <span className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>180</span>.</h1>
           <div className="client-progress">

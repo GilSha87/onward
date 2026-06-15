@@ -216,6 +216,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
             <div>ICP · Flow</div>
             <div><SortHeader k="phase" label="Journey" /></div>
             <div><SortHeader k="dayIn" label="Day in" /></div>
+            <div><SortHeader k="mrr" label="MRR" /></div>
             <div>Next milestone</div>
             <div></div>
           </div>
@@ -237,7 +238,6 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                     </div>
                     <div className="client-sub">
                       {c.flag} {c.country}{c.contacts?.[0]?.name ? ` · ${c.contacts[0].name}` : ''}
-                      {c.mrr != null && c.mrr !== '' && <span> · {fmtMoney(c.mrr, c.mrrCurrency)}/mo</span>}
                     </div>
                   </div>
                 </div>
@@ -252,6 +252,16 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                 <div>
                   <div className="day-counter"><span className="n tabnum">{c.dayIn}</span><span className="l">/180</span></div>
                   <div className={`day-verdict ${verdict.kind}`}>{verdict.label}</div>
+                </div>
+                <div>
+                  {c.mrr != null && c.mrr !== '' ? (
+                    <>
+                      <div className="tabnum" style={{ fontSize: 14, fontWeight: 600 }}>{fmtMoney(c.mrr, c.mrrCurrency)}</div>
+                      <div className="client-sub" style={{ marginTop: 2 }}>/mo</div>
+                    </>
+                  ) : (
+                    <span className="client-sub">—</span>
+                  )}
                 </div>
                 <div><div style={{ fontSize: 13, fontWeight: 500 }}>{nextStep}</div></div>
                 <div style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
