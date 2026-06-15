@@ -5,12 +5,20 @@ import en from './locales/en/translation.json';
 import he from './locales/he/translation.json';
 import nl from './locales/nl/translation.json';
 import es from './locales/es/translation.json';
+import de from './locales/de/translation.json';
+import fr from './locales/fr/translation.json';
+import pt from './locales/pt/translation.json';
+import ja from './locales/ja/translation.json';
 
 export const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧', dir: 'ltr' },
-  { code: 'he', label: 'עברית', flag: '🇮🇱', dir: 'rtl' },
-  { code: 'nl', label: 'Nederlands', flag: '🇳🇱', dir: 'ltr' },
   { code: 'es', label: 'Español', flag: '🇪🇸', dir: 'ltr' },
+  { code: 'de', label: 'Deutsch', flag: '🇩🇪', dir: 'ltr' },
+  { code: 'nl', label: 'Nederlands', flag: '🇳🇱', dir: 'ltr' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷', dir: 'ltr' },
+  { code: 'pt', label: 'Português', flag: '🇵🇹', dir: 'ltr' },
+  { code: 'he', label: 'עברית', flag: '🇮🇱', dir: 'rtl' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵', dir: 'ltr' },
 ];
 
 const STORAGE_KEY = 'onward_lang';
@@ -57,6 +65,10 @@ i18n
       he: { translation: he },
       nl: { translation: nl },
       es: { translation: es },
+      de: { translation: de },
+      fr: { translation: fr },
+      pt: { translation: pt },
+      ja: { translation: ja },
     },
     lng: initialLang(),
     fallbackLng: 'en',

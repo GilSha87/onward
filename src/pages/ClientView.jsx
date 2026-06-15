@@ -14,6 +14,10 @@ const LANG_MAP = {
   'עברית': 'he',
   'Español': 'es',
   'Nederlands': 'nl',
+  'Deutsch': 'de',
+  'Français': 'fr',
+  'Português': 'pt',
+  '日本語': 'ja',
 };
 
 function amInitials(name) {
