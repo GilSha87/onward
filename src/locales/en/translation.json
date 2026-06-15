@@ -1,4 +1,12 @@
 {
+  "status": {
+    "done": "Done",
+    "progress": "In progress",
+    "blocked": "Blocked",
+    "not": "Not started",
+    "skip": "Skipped",
+    "defer": "Deferred"
+  },
   "mrr": {
     "label": "Monthly Recurring Revenue (MRR)",
     "placeholder": "e.g. 2500",

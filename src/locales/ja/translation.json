@@ -1,4 +1,12 @@
 {
+  "status": {
+    "done": "完了",
+    "progress": "進行中",
+    "blocked": "ブロック中",
+    "not": "未着手",
+    "skip": "スキップ",
+    "defer": "保留"
+  },
   "mrr": {
     "label": "月間経常収益 (MRR)",
     "placeholder": "例: 2500",

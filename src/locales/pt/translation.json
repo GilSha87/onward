@@ -1,4 +1,12 @@
 {
+  "status": {
+    "done": "Concluído",
+    "progress": "Em andamento",
+    "blocked": "Bloqueado",
+    "not": "Não iniciado",
+    "skip": "Ignorado",
+    "defer": "Adiado"
+  },
   "mrr": {
     "label": "Receita recorrente mensal (MRR)",
     "placeholder": "ex.: 2500",

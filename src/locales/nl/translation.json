@@ -1,4 +1,12 @@
 {
+  "status": {
+    "done": "Voltooid",
+    "progress": "Bezig",
+    "blocked": "Geblokkeerd",
+    "not": "Niet gestart",
+    "skip": "Overgeslagen",
+    "defer": "Uitgesteld"
+  },
   "mrr": {
     "label": "Maandelijks terugkerende omzet (MRR)",
     "placeholder": "bijv. 2500",

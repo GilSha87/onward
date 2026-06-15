@@ -1,4 +1,12 @@
 {
+  "status": {
+    "done": "Erledigt",
+    "progress": "In Bearbeitung",
+    "blocked": "Blockiert",
+    "not": "Nicht begonnen",
+    "skip": "Übersprungen",
+    "defer": "Zurückgestellt"
+  },
   "mrr": {
     "label": "Monatlich wiederkehrender Umsatz (MRR)",
     "placeholder": "z. B. 2500",

@@ -1,4 +1,12 @@
 {
+  "status": {
+    "done": "Completado",
+    "progress": "En curso",
+    "blocked": "Bloqueado",
+    "not": "Sin iniciar",
+    "skip": "Omitido",
+    "defer": "Aplazado"
+  },
   "mrr": {
     "label": "Ingresos recurrentes mensuales (MRR)",
     "placeholder": "p. ej. 2500",

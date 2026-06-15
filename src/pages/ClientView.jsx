@@ -8,6 +8,7 @@ import JourneyStrip from '../components/journey/JourneyStrip';
 import Gantt from '../components/journey/Gantt';
 import ResourcesPanel from '../components/ui/ResourcesPanel';
 import ClientLogo from '../components/ui/ClientLogo';
+import { localizeStep } from '../lib/stepI18n';
 
 const LANG_MAP = {
   'English': 'en',
@@ -92,14 +93,17 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
                 <>
                   <div className="eyebrow accent" style={{ marginBottom: 12 }}>{t('clientView.open_tasks')}</div>
                   <div className="card" style={{ overflow: 'hidden', marginBottom: 32 }}>
-                    {clientTasks.slice(0, 6).map(s => (
+                    {clientTasks.slice(0, 6).map(s => {
+                      const loc = localizeStep(s, langCode);
+                      return (
                       <div key={s.id} className={`step-row ${s.status}`} style={{ padding: '16px 20px', gridTemplateColumns: '28px 1fr auto auto', cursor: 'default' }}>
                         <span className="step-check clickable" onClick={() => onToggleStep && onToggleStep(s.id)} title={t('clientView.mark_complete')}>{s.status === 'done' && ICONS.check}</span>
-                        <div className="title"><b>{s.title}</b><div className="why">{s.why}</div></div>
+                        <div className="title"><b>{loc.title}</b><div className="why">{loc.why}</div></div>
                         <span className="due">{t('clientView.day_label', { n: s.due })}</span>
-                        <Pill kind={s.status} />
+                        <Pill kind={s.status}>{t('status.' + s.status)}</Pill>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               ) : (
@@ -107,14 +111,17 @@ export default function ClientView({ client, steps, onOpenPlan, onToggleStep }) 
               )}
               <div className="eyebrow" style={{ marginBottom: 12 }}>{t('clientView.all_steps')}</div>
               <div className="card" style={{ overflow: 'hidden' }}>
-                {allClientSteps.map(s => (
+                {allClientSteps.map(s => {
+                  const loc = localizeStep(s, langCode);
+                  return (
                   <div key={s.id} className={`step-row ${s.status}`} style={{ padding: '14px 20px', gridTemplateColumns: '28px 1fr auto auto', cursor: 'default' }}>
                     <span className="step-check clickable" onClick={() => onToggleStep && onToggleStep(s.id)} title={s.status === 'done' ? t('clientView.mark_not_started') : t('clientView.mark_complete')}>{s.status === 'done' && ICONS.check}</span>
-                    <div className="title"><b>{s.title}</b><div className="why">{s.why}</div></div>
+                    <div className="title"><b>{loc.title}</b><div className="why">{loc.why}</div></div>
                     <span className="due">{t('clientView.day_label', { n: s.due })}</span>
-                    <Pill kind={s.status} />
+                    <Pill kind={s.status}>{t('status.' + s.status)}</Pill>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             <aside>
