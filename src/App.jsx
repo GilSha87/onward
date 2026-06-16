@@ -44,9 +44,11 @@ function userFromSession(session) {
   return { id: u.id, name, initials };
 }
 
-// Detect a Supabase invite/signup token embedded in the URL hash fragment.
+// Detect a Supabase invite/signup/recovery token embedded in the URL hash
+// fragment. Recovery is included so password-reset links also land on the
+// set-password screen (InviteAccept), letting the user choose a new password.
 function isInviteHash(hash) {
-  return /type=(invite|signup)/.test(hash || '');
+  return /type=(invite|signup|recovery)/.test(hash || '');
 }
 
 // Serialize the in-app `screen` state to a URL hash so views are deep-linkable

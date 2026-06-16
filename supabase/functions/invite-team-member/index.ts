@@ -56,10 +56,17 @@ serve(async (req) => {
       });
     }
 
-    // Send Supabase invite — creates auth.users record and sends invite email
+    // Where the invite link should land. Must point at the deployed app so the
+    // invitee is taken to the set-password screen (InviteAccept). Configurable
+    // via the APP_URL env var, with the production URL as a fallback.
+    const appUrl = Deno.env.get('APP_URL') ?? 'https://onward-tau.vercel.app';
+
+    // Send Supabase invite — creates auth.users record and sends invite email.
+    // redirectTo ensures the email link returns to the app with the invite
+    // token in the URL hash, so the invitee can create their own password.
     const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
       email,
-      { data: { full_name: name, role } }
+      { data: { full_name: name, role }, redirectTo: appUrl }
     );
     if (inviteError) throw inviteError;
 
