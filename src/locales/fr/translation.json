@@ -296,6 +296,21 @@
     "not_shared": "Pas encore partagé. Générez un lien privé pour envoyer ce plan pour approbation.",
     "share_with_client": "Partager avec le client"
   },
+  "topbar": {
+    "team": "Équipe",
+    "plan_crumb": "Plan 60·90·180",
+    "client_view_crumb": "{{name}} — vue client",
+    "am_view": "Vue AM"
+  },
+  "login": {
+    "poster_a": "Chaque client,",
+    "poster_b": "dans les temps.",
+    "tagline": "Une gestion de l'intégration conçue pour la façon dont les gestionnaires de compte travaillent vraiment.",
+    "welcome_back": "Bon retour",
+    "subtitle": "Saisissez vos identifiants de compte Duda pour continuer.",
+    "email_ph": "vous@duda.co",
+    "error_invalid": "E-mail ou mot de passe invalide. Veuillez réessayer."
+  },
   "phases": {
     "pre": "Pré-intégration",
     "p1": "Lancement et découverte",

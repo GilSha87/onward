@@ -296,6 +296,21 @@
     "not_shared": "Not yet shared. Generate a private link to send this plan for approval.",
     "share_with_client": "Share with client"
   },
+  "topbar": {
+    "team": "Team",
+    "plan_crumb": "60·90·180 plan",
+    "client_view_crumb": "{{name}} — client view",
+    "am_view": "AM view"
+  },
+  "login": {
+    "poster_a": "Every client,",
+    "poster_b": "on track.",
+    "tagline": "Onboarding management built for the way account managers actually work.",
+    "welcome_back": "Welcome back",
+    "subtitle": "Enter your Duda account credentials to continue.",
+    "email_ph": "you@duda.co",
+    "error_invalid": "Invalid email or password. Please try again."
+  },
   "phases": {
     "pre": "Pre-Onboarding",
     "p1": "Kickoff & Discovery",

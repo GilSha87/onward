@@ -296,6 +296,21 @@
     "not_shared": "Aún no compartido. Genera un enlace privado para enviar este plan para su aprobación.",
     "share_with_client": "Compartir con el cliente"
   },
+  "topbar": {
+    "team": "Equipo",
+    "plan_crumb": "Plan 60·90·180",
+    "client_view_crumb": "{{name}} — vista del cliente",
+    "am_view": "Vista de AM"
+  },
+  "login": {
+    "poster_a": "Cada cliente,",
+    "poster_b": "en camino.",
+    "tagline": "Gestión de incorporación creada para cómo trabajan realmente los gestores de cuentas.",
+    "welcome_back": "Bienvenido de nuevo",
+    "subtitle": "Introduce las credenciales de tu cuenta de Duda para continuar.",
+    "email_ph": "tu@duda.co",
+    "error_invalid": "Correo electrónico o contraseña no válidos. Inténtalo de nuevo."
+  },
   "phases": {
     "pre": "Preincorporación",
     "p1": "Inicio y descubrimiento",

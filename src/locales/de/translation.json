@@ -296,6 +296,21 @@
     "not_shared": "Noch nicht geteilt. Erstellen Sie einen privaten Link, um diesen Plan zur Genehmigung zu senden.",
     "share_with_client": "Mit Kunde teilen"
   },
+  "topbar": {
+    "team": "Team",
+    "plan_crumb": "60·90·180-Plan",
+    "client_view_crumb": "{{name}} — Kundenansicht",
+    "am_view": "AM-Ansicht"
+  },
+  "login": {
+    "poster_a": "Jeder Kunde,",
+    "poster_b": "im Plan.",
+    "tagline": "Onboarding-Management, gebaut für die Art, wie Account Manager wirklich arbeiten.",
+    "welcome_back": "Willkommen zurück",
+    "subtitle": "Geben Sie Ihre Duda-Kontodaten ein, um fortzufahren.",
+    "email_ph": "du@duda.co",
+    "error_invalid": "Ungültige E-Mail oder Passwort. Bitte versuchen Sie es erneut."
+  },
   "phases": {
     "pre": "Pre-Onboarding",
     "p1": "Kickoff & Discovery",

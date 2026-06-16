@@ -296,6 +296,21 @@
     "not_shared": "Ainda não compartilhado. Gere um link privado para enviar este plano para aprovação.",
     "share_with_client": "Compartilhar com o cliente"
   },
+  "topbar": {
+    "team": "Equipe",
+    "plan_crumb": "Plano 60·90·180",
+    "client_view_crumb": "{{name}} — visão do cliente",
+    "am_view": "Visão do AM"
+  },
+  "login": {
+    "poster_a": "Cada cliente,",
+    "poster_b": "no caminho certo.",
+    "tagline": "Gestão de onboarding criada para a forma como os gerentes de conta realmente trabalham.",
+    "welcome_back": "Bem-vindo de volta",
+    "subtitle": "Insira as credenciais da sua conta Duda para continuar.",
+    "email_ph": "voce@duda.co",
+    "error_invalid": "E-mail ou senha inválidos. Tente novamente."
+  },
   "phases": {
     "pre": "Pré-onboarding",
     "p1": "Início e descoberta",

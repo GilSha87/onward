@@ -296,6 +296,21 @@
     "not_shared": "Nog niet gedeeld. Genereer een privélink om dit plan ter goedkeuring te versturen.",
     "share_with_client": "Delen met klant"
   },
+  "topbar": {
+    "team": "Team",
+    "plan_crumb": "60·90·180-plan",
+    "client_view_crumb": "{{name}} — klantweergave",
+    "am_view": "AM-weergave"
+  },
+  "login": {
+    "poster_a": "Elke klant,",
+    "poster_b": "op schema.",
+    "tagline": "Onboardingbeheer gebouwd voor de manier waarop accountmanagers echt werken.",
+    "welcome_back": "Welkom terug",
+    "subtitle": "Voer je Duda-accountgegevens in om door te gaan.",
+    "email_ph": "jij@duda.co",
+    "error_invalid": "Ongeldige e-mail of wachtwoord. Probeer het opnieuw."
+  },
   "phases": {
     "pre": "Pre-onboarding",
     "p1": "Kickoff & discovery",
