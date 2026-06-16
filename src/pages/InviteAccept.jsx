@@ -1,8 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../lib/supabase';
 
+// Extract our custom invite token from the URL hash, e.g. "#/invite?token=UUID".
+function readInviteToken() {
+  const hash = window.location.hash || '';
+  const qIndex = hash.indexOf('?');
+  if (qIndex === -1) return '';
+  return new URLSearchParams(hash.slice(qIndex + 1)).get('token') || '';
+}
+
 export default function InviteAccept({ onDone }) {
-  const [ready, setReady] = useState(false);
+  // Our own invite-token flow. When a token is present we don't need a Supabase
+  // session up front — the token authorizes the password set via the
+  // accept-invite edge function. This is immune to corporate mail scanners that
+  // pre-fetch (and would otherwise consume) one-time email links.
+  const [token] = useState(readInviteToken);
+
+  // Session-based fallback flow (Supabase recovery links): we wait for the SDK
+  // to establish a session from the URL before showing the form.
+  const [ready, setReady] = useState(() => !!readInviteToken());
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,15 +26,14 @@ export default function InviteAccept({ onDone }) {
   const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
-    // Supabase SDK processes invite tokens from the URL hash automatically.
-    // Check for an existing session first, then listen for auth state changes.
+    if (token) return; // token flow doesn't depend on a session
+    // Supabase SDK processes recovery tokens from the URL hash automatically.
     db.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUserEmail(session.user?.email || '');
         setReady(true);
       }
     });
-
     const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setUserEmail(session.user?.email || '');
@@ -26,7 +41,7 @@ export default function InviteAccept({ onDone }) {
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [token]);
 
   async function submit(e) {
     e.preventDefault();
@@ -40,16 +55,51 @@ export default function InviteAccept({ onDone }) {
     }
     setLoading(true);
     setError('');
+
+    if (token) {
+      // Token flow: hand the token + chosen password to the edge function, which
+      // sets the password and activates the member using the service role.
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invite`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ token, password }),
+          },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not set password.');
+        // Sign in with the brand-new credentials so they land straight in the app.
+        const { error: signErr } = await db.auth.signInWithPassword({
+          email: data.email,
+          password,
+        });
+        if (signErr) {
+          // Password was set, but auto sign-in failed — send them to login.
+          setError('Password set! Please log in with your email and new password.');
+          setLoading(false);
+          return;
+        }
+        onDone();
+      } catch (err) {
+        setError(err.message || 'Could not set password. Please try again.');
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Session-based flow (Supabase recovery link): update the logged-in user.
     const { data, error: err } = await db.auth.updateUser({ password });
     if (err) {
       setError(err.message || 'Could not set password. Please try again.');
       setLoading(false);
       return;
     }
-    // Mark the team member as active now that they've set a password. The
-    // RLS "team_update" policy permits a user to update their own row. A
-    // failure here shouldn't block the user — the password was set — so we
-    // don't surface it as a fatal error.
     if (data?.user?.id) {
       await db.from('team_members')
         .update({ status: 'active' })

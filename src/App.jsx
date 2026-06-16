@@ -73,7 +73,10 @@ function screenToHash(screen) {
 // Parse a URL hash back into a `screen` object. Unknown routes fall back to the
 // portfolio dashboard.
 function hashToScreen(hash) {
-  const parts = (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+  // Strip any query string from each segment so routes like
+  // "#/invite?token=UUID" still resolve to the "invite" screen.
+  const parts = (hash || '').replace(/^#\/?/, '').split('/').filter(Boolean)
+    .map(p => p.split('?')[0]);
   if (parts.length === 0 || parts[0] === 'portfolio') return { kind: 'dashboard' };
   if (parts[0] === 'team') return { kind: 'team' };
   if (parts[0] === 'invite' || parts[0] === 'signup') return { kind: 'invite' };

@@ -57,33 +57,38 @@ serve(async (req) => {
     }
 
     // Where the invite link should land. Must point at the deployed app so the
-    // invitee is taken to the set-password screen (InviteAccept). Configurable
-    // via the APP_URL env var, with the production URL as a fallback.
-    const appUrl = Deno.env.get('APP_URL') ?? 'https://onward-tau.vercel.app';
+    // invitee reaches the set-password screen (InviteAccept). Configurable via
+    // the APP_URL env var, with the production URL as a fallback.
+    const appUrl = (Deno.env.get('APP_URL') ?? 'https://onward-tau.vercel.app').replace(/\/+$/, '');
 
-    // Send Supabase invite — creates auth.users record and sends invite email.
-    // redirectTo ensures the email link returns to the app with the invite
-    // token in the URL hash, so the invitee can create their own password.
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-      email,
-      { data: { full_name: name, role }, redirectTo: appUrl }
-    );
+    // Issue our OWN invite token instead of a Supabase one-time email OTP.
+    // Loading the invite page (which corporate mail scanners pre-fetch) does NOT
+    // consume this token — it is only spent when the invitee submits a password
+    // via the accept-invite function. This makes invites immune to link
+    // pre-fetching and removes the dependency on Supabase's email rate limit.
+    const { data: invite, error: inviteError } = await adminClient
+      .from('team_invites')
+      .insert({ email, name, role, invited_by: caller.id })
+      .select('token')
+      .single();
     if (inviteError) throw inviteError;
 
-    // Create team_members row
+    // Add a pending team_members row so the invitee shows up immediately in the
+    // team list. user_id is filled in later by accept-invite. If the member
+    // already exists (re-invite), leave their row untouched — in particular we
+    // must never downgrade an already-active member back to 'invited'. The fresh
+    // token issued above still lets them (re)set their password.
     const { error: memberError } = await adminClient
       .from('team_members')
-      .insert({
-        user_id: inviteData.user.id,
-        invited_by: caller.id,
-        name,
-        email,
-        role,
-        status: 'invited',
-      });
+      .upsert(
+        { invited_by: caller.id, name, email, role, status: 'invited' },
+        { onConflict: 'email', ignoreDuplicates: true },
+      );
     if (memberError) throw memberError;
 
-    return new Response(JSON.stringify({ success: true }), {
+    const inviteUrl = `${appUrl}/#/invite?token=${invite.token}`;
+
+    return new Response(JSON.stringify({ success: true, invite_url: inviteUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
