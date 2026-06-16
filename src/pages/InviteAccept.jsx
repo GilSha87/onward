@@ -40,11 +40,20 @@ export default function InviteAccept({ onDone }) {
     }
     setLoading(true);
     setError('');
-    const { error: err } = await db.auth.updateUser({ password });
+    const { data, error: err } = await db.auth.updateUser({ password });
     if (err) {
       setError(err.message || 'Could not set password. Please try again.');
       setLoading(false);
       return;
+    }
+    // Mark the team member as active now that they've set a password. The
+    // RLS "team_update" policy permits a user to update their own row. A
+    // failure here shouldn't block the user — the password was set — so we
+    // don't surface it as a fatal error.
+    if (data?.user?.id) {
+      await db.from('team_members')
+        .update({ status: 'active' })
+        .eq('user_id', data.user.id);
     }
     onDone();
   }
