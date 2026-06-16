@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PHASES, PRIO, ICONS } from '../lib/data';
 import PrioPill from '../components/ui/PrioPill';
 
 export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSteps, customSteps, setCustomSteps, icp, flow }) {
+  const { t } = useTranslation();
+  const ownerLabel = (o) => o === 'Duda' ? t('owner.duda') : o === 'Both' ? t('owner.both') : o === 'Client' ? t('owner.client') : o;
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Filter to only steps applicable to the selected flow and segment
@@ -47,46 +50,46 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
     <div>
       <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
         <div>
-          <div className="eyebrow">Onboarding template</div>
+          <div className="eyebrow">{t('modals.stepPicker.eyebrow')}</div>
           <p className="muted text-sm" style={{ marginTop: 4 }}>
-            Starting from <b>{icp} · {flow}</b>. {included} steps will be created — toggle to include/exclude.
+            {t('modals.stepPicker.summary', { icp, flow, count: included })}
           </p>
         </div>
         <button type="button" className="btn sm primary" onClick={() => setShowAddForm(!showAddForm)}>
-          {ICONS.plus} Custom step
+          {ICONS.plus} {t('modals.stepPicker.custom_step')}
         </button>
       </div>
 
       {showAddForm && (
         <div className="custom-step-form">
-          <div className="eyebrow" style={{ marginBottom: 8 }}>Add custom step</div>
-          <input className="input" placeholder="Step title *" value={newTitle}
+          <div className="eyebrow" style={{ marginBottom: 8 }}>{t('modals.stepPicker.add_custom')}</div>
+          <input className="input" placeholder={t('modals.stepPicker.title_ph')} value={newTitle}
             onChange={e => setNewTitle(e.target.value)} style={{ marginBottom: 8 }} />
-          <input className="input" placeholder="Why it matters" value={newWhy}
+          <input className="input" placeholder={t('modals.stepPicker.why_ph')} value={newWhy}
             onChange={e => setNewWhy(e.target.value)} style={{ marginBottom: 8 }} />
           <div className="field-row">
             <select className="input" value={newPhase} onChange={e => setNewPhase(e.target.value)}>
-              {PHASES.map(p => <option key={p.id} value={p.id}>Phase {p.num} · {p.name}</option>)}
+              {PHASES.map(p => <option key={p.id} value={p.id}>{t('modals.stepPicker.phase_opt', { num: p.num, name: t('phases.' + p.id, { defaultValue: p.name }) })}</option>)}
             </select>
             <select className="input" value={newOwner} onChange={e => setNewOwner(e.target.value)}>
-              <option value="Duda">Owner: Duda</option>
-              <option value="Client">Owner: Client</option>
-              <option value="Both">Owner: Both</option>
+              <option value="Duda">{t('modals.stepPicker.owner_duda')}</option>
+              <option value="Client">{t('modals.stepPicker.owner_client')}</option>
+              <option value="Both">{t('modals.stepPicker.owner_both')}</option>
             </select>
           </div>
           <div className="field-row" style={{ marginTop: 8 }}>
             <select className="input" value={newPrio} onChange={e => setNewPrio(e.target.value)}>
-              {Object.keys(PRIO).map(k => <option key={k} value={k}>{PRIO[k].label}</option>)}
+              {Object.keys(PRIO).map(k => <option key={k} value={k}>{t('prio.' + k, { defaultValue: PRIO[k].label })}</option>)}
             </select>
             <div className="flex items-center gap-2">
-              <span className="text-xs muted">Due day:</span>
+              <span className="text-xs muted">{t('modals.stepPicker.due_day')}</span>
               <input type="number" className="input" value={newDue} min={0} max={180}
                 onChange={e => setNewDue(Number(e.target.value))} style={{ width: 80 }} />
             </div>
           </div>
           <div className="flex gap-2" style={{ marginTop: 10 }}>
-            <button type="button" className="btn sm primary" onClick={addCustomStep}>Add step</button>
-            <button type="button" className="btn sm ghost" onClick={() => setShowAddForm(false)}>Cancel</button>
+            <button type="button" className="btn sm primary" onClick={addCustomStep}>{t('modals.stepPicker.add_step')}</button>
+            <button type="button" className="btn sm ghost" onClick={() => setShowAddForm(false)}>{t('common.cancel')}</button>
           </div>
         </div>
       )}
@@ -94,14 +97,14 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
       {customSteps.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <div className="text-xs semibold muted" style={{ padding: '8px 14px', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-            Custom steps ({customSteps.length})
+            {t('modals.stepPicker.custom_steps', { count: customSteps.length })}
           </div>
           {customSteps.map(s => (
             <div key={s.id} className="step-toggle" style={{ background: 'var(--duda-tint)' }}>
               <input type="checkbox" checked readOnly />
               <div className="step-info">
                 <div className="step-title-text">{s.title}</div>
-                <div className="step-owner-text">{s.owner} · Day {s.due}</div>
+                <div className="step-owner-text">{t('modals.stepPicker.owner_day', { owner: ownerLabel(s.owner), due: s.due })}</div>
               </div>
               <PrioPill prio={s.prio} />
               <button type="button" className="close" style={{ width: 24, height: 24 }}
@@ -124,7 +127,7 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
                 color: 'var(--ink-muted)', fontWeight: 700,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
-                <span>Phase {p.num} · {p.name} ({phaseSteps.length - excludedCount}/{phaseSteps.length})</span>
+                <span>{t('modals.stepPicker.phase_header', { num: p.num, name: t('phases.' + p.id, { defaultValue: p.name }), included: phaseSteps.length - excludedCount, total: phaseSteps.length })}</span>
                 <button type="button" className="btn sm ghost" style={{ fontSize: 10 }}
                   onClick={() => {
                     const allIds = phaseSteps.map(s => s.id);
@@ -135,7 +138,7 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
                       setExcludedSteps([...new Set([...excludedSteps, ...allIds])]);
                     }
                   }}>
-                  Toggle all
+                  {t('modals.stepPicker.toggle_all')}
                 </button>
               </div>
               {phaseSteps.map(s => (
@@ -145,7 +148,7 @@ export default function StepTemplatePicker({ steps, excludedSteps, setExcludedSt
                     onChange={() => toggleStep(s.id)} />
                   <div className="step-info">
                     <div className="step-title-text">{s.title}</div>
-                    <div className="step-owner-text">{s.owner} · Day {s.due}</div>
+                    <div className="step-owner-text">{t('modals.stepPicker.owner_day', { owner: ownerLabel(s.owner), due: s.due })}</div>
                   </div>
                   <PrioPill prio={s.prio} />
                 </div>

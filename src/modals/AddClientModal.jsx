@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SAMPLE_STEPS, FLOWS, SEGMENTS, ICONS } from '../lib/data';
 import { db } from '../lib/supabase';
 import { showToast } from '../components/ui/Toast';
@@ -11,6 +12,7 @@ const COLORS = ['#1F3A5F', '#B8543A', '#5C6B4A', '#B8854A', '#A0392E', '#4F5A66'
 const COUNTRIES = ['🇺🇸 United States', '🇪🇺 European Union', '🇩🇪 Germany', '🇳🇱 Netherlands', '🇫🇷 France', '🇬🇧 United Kingdom', '🇦🇺 Australia', '🇨🇦 Canada', '🇧🇷 Brazil', '🇮🇱 Israel', '🇲🇽 Mexico', '🇯🇵 Japan', '🇰🇷 South Korea'];
 
 export default function AddClientModal({ onClose, onSave, currentUser }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('info');
   const [color, setColor] = useState('#B8543A');
   const [icp, setIcp] = useState('Agency');
@@ -51,11 +53,11 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
   async function handleLogoFile(file) {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showToast('Please upload an image file (PNG, JPG, SVG, or WebP).', 'error');
+      showToast(t('modals.addClient.toast_image_only'), 'error');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      showToast('Logo must be under 2 MB.', 'error');
+      showToast(t('modals.addClient.toast_logo_size'), 'error');
       return;
     }
     setLogoUploading(true);
@@ -74,14 +76,14 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
         .createSignedUrl(path, 31536000); // 1-year signed URL
       if (urlData?.signedUrl) setLogo(urlData.signedUrl);
     } catch {
-      showToast('Logo upload failed. You can paste a URL instead.', 'error');
+      showToast(t('modals.addClient.toast_logo_failed'), 'error');
     } finally {
       setLogoUploading(false);
     }
   }
 
   async function handleSave() {
-    if (!name.trim()) { showToast('Please enter a company name.', 'error'); return; }
+    if (!name.trim()) { showToast(t('modals.addClient.toast_company_required'), 'error'); return; }
     const mono = name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '??';
     const flagParts = country.match(/^(\S+)\s+(.+)/);
     const flag = flagParts ? flagParts[1] : '🌐';
@@ -120,13 +122,13 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
 
   return (
     <Modal size="lg" onClose={onClose}>
-      <ModalHead title="New client" eyebrow="Onboarding setup" onClose={onClose} />
+      <ModalHead title={t('modals.addClient.title')} eyebrow={t('modals.addClient.eyebrow')} onClose={onClose} />
       <div style={{ padding: '0 24px', borderBottom: '1px solid var(--hairline)', background: 'var(--paper)' }}>
         <div className="tab-row" style={{ borderBottom: 0, marginBottom: 0 }}>
-          <button className={tab === 'info' ? 'on' : ''} onClick={() => setTab('info')}>① Client info</button>
-          <button className={tab === 'contacts' ? 'on' : ''} onClick={() => setTab('contacts')}>② Contacts</button>
-          <button className={tab === 'brand' ? 'on' : ''} onClick={() => setTab('brand')}>③ Branding</button>
-          <button className={tab === 'steps' ? 'on' : ''} onClick={() => setTab('steps')}>④ Steps</button>
+          <button className={tab === 'info' ? 'on' : ''} onClick={() => setTab('info')}>{t('modals.addClient.tab_info')}</button>
+          <button className={tab === 'contacts' ? 'on' : ''} onClick={() => setTab('contacts')}>{t('modals.addClient.tab_contacts')}</button>
+          <button className={tab === 'brand' ? 'on' : ''} onClick={() => setTab('brand')}>{t('modals.addClient.tab_brand')}</button>
+          <button className={tab === 'steps' ? 'on' : ''} onClick={() => setTab('steps')}>{t('modals.addClient.tab_steps')}</button>
         </div>
       </div>
 
@@ -135,24 +137,24 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
           <div className="flex flex-col gap-5">
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
               <div className="field">
-                <label>Company name *</label>
-                <input className="input" placeholder="e.g. Northwind Marketing" value={name} onChange={e => setName(e.target.value)} autoFocus />
+                <label>{t('modals.addClient.company_name')}</label>
+                <input className="input" placeholder={t('modals.addClient.company_ph')} value={name} onChange={e => setName(e.target.value)} autoFocus />
               </div>
               <div className="field">
-                <label>Kickoff date</label>
+                <label>{t('modals.addClient.kickoff_date')}</label>
                 <input className="input" type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} />
               </div>
             </div>
             <div className="rule rule-soft" style={{ margin: '4px 0' }}></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div className="field">
-                <label>Country / Region</label>
+                <label>{t('modals.addClient.country_region')}</label>
                 <select className="input" value={country} onChange={e => setCountry(e.target.value)}>
                   {COUNTRIES.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Language</label>
+                <label>{t('modals.addClient.language')}</label>
                 <select className="input" value={language} onChange={e => setLanguage(e.target.value)}>
                   <option>English</option><option>Español</option><option>Deutsch</option>
                   <option>Nederlands</option><option>Français</option><option>Português</option><option>עברית</option><option>日本語</option>
@@ -162,12 +164,12 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
             <div className="rule rule-soft" style={{ margin: '4px 0' }}></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div className="field">
-                <label>Monthly Recurring Revenue (MRR)</label>
+                <label>{t('modals.addClient.mrr_label')}</label>
                 <input className="input" type="number" min="0" step="1" inputMode="decimal"
-                  placeholder="e.g. 2500" value={mrr} onChange={e => setMrr(e.target.value)} />
+                  placeholder={t('modals.addClient.mrr_ph')} value={mrr} onChange={e => setMrr(e.target.value)} />
               </div>
               <div className="field">
-                <label>Currency</label>
+                <label>{t('modals.addClient.currency')}</label>
                 <select className="input" value={mrrCurrency} onChange={e => setMrrCurrency(e.target.value)}>
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
@@ -182,27 +184,27 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
             </div>
             {mrr && !isNaN(Number(mrr)) && (
               <div className="muted text-xs" style={{ marginTop: -8 }}>
-                Annual Recurring Revenue (ARR): <b>{new Intl.NumberFormat(undefined, { style: 'currency', currency: mrrCurrency, maximumFractionDigits: 0 }).format(Number(mrr) * 12)}</b> · calculated automatically (MRR × 12)
+                {t('modals.addClient.arr_note', { value: new Intl.NumberFormat(undefined, { style: 'currency', currency: mrrCurrency, maximumFractionDigits: 0 }).format(Number(mrr) * 12) })}
               </div>
             )}
             <div className="rule rule-soft" style={{ margin: '4px 0' }}></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div className="field">
-                <label>Target go-live date</label>
+                <label>{t('modals.addClient.go_live')}</label>
                 <input className="input" type="date" value={goLiveDate} onChange={e => setGoLiveDate(e.target.value)} />
               </div>
               <div className="field">
-                <label>Salesforce ID</label>
-                <input className="input" placeholder="e.g. 0013X00002AbCdE" value={sfId} onChange={e => setSfId(e.target.value)} />
+                <label>{t('modals.addClient.sf_id')}</label>
+                <input className="input" placeholder={t('modals.addClient.sf_ph')} value={sfId} onChange={e => setSfId(e.target.value)} />
               </div>
             </div>
             <div className="field">
-              <label>Box contract URL</label>
-              <input className="input" placeholder="https://app.box.com/…" value={boxUrl} onChange={e => setBoxUrl(e.target.value)} />
+              <label>{t('modals.addClient.box_url')}</label>
+              <input className="input" placeholder={t('modals.addClient.box_ph')} value={boxUrl} onChange={e => setBoxUrl(e.target.value)} />
             </div>
             <div className="rule rule-soft" style={{ margin: '4px 0' }}></div>
             <div className="field">
-              <label>ICP *</label>
+              <label>{t('modals.addClient.icp')}</label>
               <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                 {SEGMENTS.map(o => (
                   <button key={o} type="button" className={`btn sm ${icp === o ? 'primary' : ''}`} onClick={() => setIcp(o)}>{o}</button>
@@ -210,7 +212,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
               </div>
             </div>
             <div className="field">
-              <label>Build flow *</label>
+              <label>{t('modals.addClient.build_flow')}</label>
               <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                 {FLOWS.map(o => (
                   <button key={o} type="button" className={`btn sm ${flow === o ? 'primary' : ''}`} onClick={() => setFlow(o)}>{o}</button>
@@ -218,10 +220,10 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
               </div>
             </div>
             <div className="field">
-              <label>Touch level</label>
+              <label>{t('modals.addClient.touch_level')}</label>
               <div className="seg" style={{ alignSelf: 'flex-start' }}>
-                <button className={touch === 'High-Touch' ? 'on' : ''} onClick={() => setTouch('High-Touch')}>High-Touch</button>
-                <button className={touch === 'Low-Touch' ? 'on' : ''} onClick={() => setTouch('Low-Touch')}>Low-Touch</button>
+                <button className={touch === 'High-Touch' ? 'on' : ''} onClick={() => setTouch('High-Touch')}>{t('modals.addClient.high_touch')}</button>
+                <button className={touch === 'Low-Touch' ? 'on' : ''} onClick={() => setTouch('Low-Touch')}>{t('modals.addClient.low_touch')}</button>
               </div>
             </div>
           </div>
@@ -231,13 +233,12 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
           <div>
             <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
               <div>
-                <div className="eyebrow">Client contacts</div>
+                <div className="eyebrow">{t('modals.addClient.contacts_eyebrow')}</div>
                 <p className="muted text-sm" style={{ marginTop: 4 }}>
-                  Add all stakeholders. Assign designations: Champion, Executive, Primary, Technical.
-                  Each person can have multiple designations.
+                  {t('modals.addClient.contacts_desc')}
                 </p>
               </div>
-              <button type="button" className="btn sm" onClick={addContact}>{ICONS.plus} Add contact</button>
+              <button type="button" className="btn sm" onClick={addContact}>{ICONS.plus} {t('modals.addClient.add_contact')}</button>
             </div>
             {contacts.map((c, i) => (
               <ContactEntry key={i} contact={c}
@@ -251,7 +252,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
         {tab === 'brand' && (
           <div className="flex flex-col gap-6">
             <div>
-              <div className="eyebrow">Logo</div>
+              <div className="eyebrow">{t('modals.addClient.logo')}</div>
               <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '160px 1fr', gap: 24 }}>
                 {/* Hidden file input */}
                 <input
@@ -287,26 +288,26 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
                       >×</button>
                     </>
                   ) : logoUploading ? (
-                    <div className="text-sm">Uploading…</div>
+                    <div className="text-sm">{t('modals.addClient.uploading')}</div>
                   ) : (
                     <>
                       <svg width="32" height="32" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.2">
                         <rect x="4" y="6" width="28" height="22" rx="2" /><circle cx="13" cy="14" r="2.5" /><path d="M4 22l8-7 9 8M18 22l5-4 9 5" />
                       </svg>
-                      <div className="text-sm">Click to upload</div>
-                      <div className="text-xs faint">PNG, SVG, JPG · 2 MB</div>
+                      <div className="text-sm">{t('modals.addClient.click_upload')}</div>
+                      <div className="text-xs faint">{t('modals.addClient.logo_hint')}</div>
                     </>
                   )}
                 </div>
                 <div>
                   <p className="muted text-sm" style={{ lineHeight: 1.55 }}>
-                    The logo appears on the client-facing tracker, plan summaries, and exported PDFs.
+                    {t('modals.addClient.logo_desc')}
                   </p>
                   <div className="field" style={{ marginTop: 16 }}>
-                    <label>or paste a URL</label>
+                    <label>{t('modals.addClient.paste_url')}</label>
                     <input
                       className="input"
-                      placeholder="https://…/logo.svg"
+                      placeholder={t('modals.addClient.logo_url_ph')}
                       value={logo}
                       onChange={e => setLogo(e.target.value)}
                     />
@@ -316,7 +317,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
             </div>
             <div className="rule rule-soft"></div>
             <div>
-              <div className="eyebrow">Brand color</div>
+              <div className="eyebrow">{t('modals.addClient.brand_color')}</div>
               <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 {COLORS.map(c => (
                   <button key={c} onClick={() => setColor(c)}
@@ -329,7 +330,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
                 <input type="text" value={color} onChange={e => setColor(e.target.value)} className="input mono" style={{ width: 100, fontSize: 12 }} />
               </div>
               <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div className="muted text-xs">Preview</div>
+                <div className="muted text-xs">{t('modals.addClient.preview')}</div>
                 {logo ? (
                   <span className="client-logo lg" style={{ background: color, overflow: 'hidden', padding: 0 }}>
                     <img src={logo} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
@@ -340,7 +341,7 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
                   </span>
                 )}
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>{name || 'Company name'}</div>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>{name || t('modals.addClient.company_name_default')}</div>
                   <div className="muted text-sm">{icp} · {flow}</div>
                 </div>
               </div>
@@ -362,16 +363,16 @@ export default function AddClientModal({ onClose, onSave, currentUser }) {
       </div>
 
       <div className="modal-foot">
-        <span className="muted text-xs">{name ? <><b>{name}</b> · {contacts.filter(c => c.name).length} contacts · {SAMPLE_STEPS.filter(s => {
+        <span className="muted text-xs">{name ? t('modals.addClient.footer_summary', { name, contacts: contacts.filter(c => c.name).length, steps: SAMPLE_STEPS.filter(s => {
           const flowOk = !s.flows || s.flows.includes('All') || s.flows.includes(flow);
           const segOk = !s.segments || s.segments.includes('All') || s.segments.includes(icp);
           return flowOk && segOk && !excludedSteps.includes(s.id);
-        }).length + customSteps.length} steps</> : (tab === 'info' ? 'Fill in client info above' : '')}</span>
+        }).length + customSteps.length }) : (tab === 'info' ? t('modals.addClient.fill_info') : '')}</span>
         <div className="flex gap-2">
-          <button className="btn" onClick={onClose}>Cancel</button>
-          {tab !== 'info' && <button className="btn" onClick={() => setTab(tab === 'contacts' ? 'info' : tab === 'brand' ? 'contacts' : 'brand')}>{ICONS.arrowL} Back</button>}
-          {tab !== 'steps' && <button className="btn primary" disabled={tab === 'info' && !name.trim()} onClick={() => setTab(tab === 'info' ? 'contacts' : tab === 'contacts' ? 'brand' : 'steps')}>Continue {ICONS.arrow}</button>}
-          {tab === 'steps' && <button className="btn primary" disabled={saving} onClick={handleSave}>{saving ? 'Saving…' : <>Save client {ICONS.check}</>}</button>}
+          <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
+          {tab !== 'info' && <button className="btn" onClick={() => setTab(tab === 'contacts' ? 'info' : tab === 'brand' ? 'contacts' : 'brand')}>{ICONS.arrowL} {t('modals.back')}</button>}
+          {tab !== 'steps' && <button className="btn primary" disabled={tab === 'info' && !name.trim()} onClick={() => setTab(tab === 'info' ? 'contacts' : tab === 'contacts' ? 'brand' : 'steps')}>{t('modals.continue')} {ICONS.arrow}</button>}
+          {tab === 'steps' && <button className="btn primary" disabled={saving} onClick={handleSave}>{saving ? t('publicPlan.saving') : <>{t('modals.addClient.save_client')} {ICONS.check}</>}</button>}
         </div>
       </div>
     </Modal>

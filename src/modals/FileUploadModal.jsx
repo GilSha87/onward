@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ICONS } from '../lib/data';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
 import { uploadFile, FILE_TYPES, MAX_FILE_BYTES, fmtBytes } from '../lib/files';
 
 export default function FileUploadModal({ client, onClose, onUploaded }) {
+  const { t } = useTranslation();
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState('');
   const [fileType, setFileType] = useState('Other');
@@ -29,17 +31,17 @@ export default function FileUploadModal({ client, onClose, onUploaded }) {
       onUploaded?.(created);
       onClose();
     } catch (err) {
-      setError(err?.message || 'Upload failed. Please try again.');
+      setError(err?.message || t('modals.fileUpload.err_failed'));
       setBusy(false);
     }
   }
 
   return (
     <Modal size="md" onClose={onClose}>
-      <ModalHead title="Upload file" eyebrow={client.name} onClose={onClose} />
+      <ModalHead title={t('modals.fileUpload.title')} eyebrow={client.name} onClose={onClose} />
       <div className="modal-body" style={{ background: 'var(--paper-soft)' }}>
         <div className="field" style={{ marginBottom: 18 }}>
-          <label>File *</label>
+          <label>{t('modals.fileUpload.file_label')}</label>
           <input
             type="file"
             className="input"
@@ -53,19 +55,19 @@ export default function FileUploadModal({ client, onClose, onUploaded }) {
           )}
           {tooBig && (
             <div className="text-xs" style={{ marginTop: 6, color: 'var(--bad, #c0392b)' }}>
-              File exceeds the 25 MB limit.
+              {t('modals.fileUpload.too_big')}
             </div>
           )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
           <div className="field">
-            <label>Title</label>
-            <input className="input" placeholder="Display name" value={title} onChange={e => setTitle(e.target.value)} />
+            <label>{t('modals.fileUpload.title_label')}</label>
+            <input className="input" placeholder={t('modals.fileUpload.title_ph')} value={title} onChange={e => setTitle(e.target.value)} />
           </div>
           <div className="field">
-            <label>Type</label>
+            <label>{t('modals.fileUpload.type_label')}</label>
             <select className="input" value={fileType} onChange={e => setFileType(e.target.value)}>
-              {FILE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {FILE_TYPES.map(ft => <option key={ft} value={ft}>{ft}</option>)}
             </select>
           </div>
         </div>
@@ -74,11 +76,11 @@ export default function FileUploadModal({ client, onClose, onUploaded }) {
         )}
       </div>
       <div className="modal-foot">
-        <span className="muted text-xs">Max 25 MB · PDF, Office docs, images.</span>
+        <span className="muted text-xs">{t('modals.fileUpload.foot')}</span>
         <div className="flex gap-2">
-          <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn" onClick={onClose} disabled={busy}>{t('common.cancel')}</button>
           <button className="btn primary" onClick={save} disabled={!file || tooBig || busy}>
-            {busy ? 'Uploading…' : <>{ICONS.plus} Upload</>}
+            {busy ? t('modals.fileUpload.uploading') : <>{ICONS.plus} {t('modals.fileUpload.upload')}</>}
           </button>
         </div>
       </div>

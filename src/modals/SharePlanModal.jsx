@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ICONS } from '../lib/data';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
 import { listShareTokens, createShareToken, revokeShareToken, shareUrl } from '../lib/plan';
 
 export default function SharePlanModal({ client, onClose }) {
+  const { t } = useTranslation();
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -28,7 +30,7 @@ export default function SharePlanModal({ client, onClose }) {
       const tok = await createShareToken(client.id);
       setTokens(prev => [tok, ...prev]);
     } catch (err) {
-      setError(err?.message || 'Could not create a share link.');
+      setError(err?.message || t('modals.sharePlan.err_create'));
     }
     setBusy(false);
   }
@@ -40,30 +42,29 @@ export default function SharePlanModal({ client, onClose }) {
       setCopiedId(tok.id);
       setTimeout(() => setCopiedId(c => (c === tok.id ? null : c)), 1800);
     } catch {
-      setError('Copy failed — select and copy the link manually.');
+      setError(t('modals.sharePlan.err_copy'));
     }
   }
 
   async function revoke(tok) {
-    if (!window.confirm('Revoke this link? The client will no longer be able to open it.')) return;
+    if (!window.confirm(t('modals.sharePlan.revoke_confirm'))) return;
     const ok = await revokeShareToken(tok.id);
-    if (ok) setTokens(prev => prev.filter(t => t.id !== tok.id));
-    else setError('Could not revoke the link.');
+    if (ok) setTokens(prev => prev.filter(x => x.id !== tok.id));
+    else setError(t('modals.sharePlan.err_revoke'));
   }
 
   return (
     <Modal size="md" onClose={onClose}>
-      <ModalHead title="Share plan with client" eyebrow={client.name} onClose={onClose} />
+      <ModalHead title={t('modals.sharePlan.title')} eyebrow={client.name} onClose={onClose} />
       <div className="modal-body" style={{ background: 'var(--paper-soft)' }}>
         <p className="muted text-sm" style={{ marginTop: 0, marginBottom: 16 }}>
-          Generate a private link the client can open without logging in. They can review
-          the 60·90·180 plan and approve it once. Links expire after 30 days.
+          {t('modals.sharePlan.desc')}
         </p>
 
         {loading ? (
-          <div className="muted text-sm">Loading links…</div>
+          <div className="muted text-sm">{t('modals.sharePlan.loading')}</div>
         ) : tokens.length === 0 ? (
-          <div className="muted text-sm" style={{ padding: '8px 0' }}>No active links yet.</div>
+          <div className="muted text-sm" style={{ padding: '8px 0' }}>{t('modals.sharePlan.no_links')}</div>
         ) : (
           <div className="flex flex-col gap-3">
             {tokens.map(tok => (
@@ -71,16 +72,16 @@ export default function SharePlanModal({ client, onClose }) {
                 <div className="flex items-center gap-2">
                   <input className="input" readOnly value={shareUrl(tok.token)} style={{ flex: 1, fontSize: 12 }} onFocus={e => e.target.select()} />
                   <button className="btn sm" onClick={() => copy(tok)}>
-                    {copiedId === tok.id ? <>{ICONS.check} Copied</> : <>{ICONS.link} Copy</>}
+                    {copiedId === tok.id ? <>{ICONS.check} {t('modals.sharePlan.copied')}</> : <>{ICONS.link} {t('modals.sharePlan.copy')}</>}
                   </button>
                 </div>
                 <div className="flex items-center justify-between" style={{ marginTop: 8 }}>
                   <span className="muted text-xs">
                     {tok.approvedAt
-                      ? <>Approved by <b>{tok.approvedBy}</b></>
-                      : 'Awaiting approval'}
+                      ? <>{t('modals.sharePlan.approved_by')} <b>{tok.approvedBy}</b></>
+                      : t('modals.sharePlan.awaiting')}
                   </span>
-                  <button className="btn ghost sm" onClick={() => revoke(tok)}>{ICONS.close} Revoke</button>
+                  <button className="btn ghost sm" onClick={() => revoke(tok)}>{ICONS.close} {t('modals.sharePlan.revoke')}</button>
                 </div>
               </div>
             ))}
@@ -90,11 +91,11 @@ export default function SharePlanModal({ client, onClose }) {
         {error && <div className="text-xs" style={{ color: 'var(--bad, #c0392b)', marginTop: 12 }}>{error}</div>}
       </div>
       <div className="modal-foot">
-        <span className="muted text-xs">Anyone with the link can view & approve the plan.</span>
+        <span className="muted text-xs">{t('modals.sharePlan.foot')}</span>
         <div className="flex gap-2">
-          <button className="btn" onClick={onClose}>Done</button>
+          <button className="btn" onClick={onClose}>{t('modals.done')}</button>
           <button className="btn primary" onClick={generate} disabled={busy}>
-            {busy ? 'Creating…' : <>{ICONS.plus} New link</>}
+            {busy ? t('modals.sharePlan.creating') : <>{ICONS.plus} {t('modals.sharePlan.new_link')}</>}
           </button>
         </div>
       </div>

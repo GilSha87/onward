@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { db } from '../lib/supabase';
 import Modal from '../components/ui/Modal';
 import ModalHead from '../components/ui/ModalHead';
-import { ROLES, ROLE_LABELS } from '../lib/permissions';
-
-// Short descriptors shown under each role option in the picker.
-const ROLE_SUBS = {
-  Staff: 'Own clients',
-  Executive: 'Approve · read-only',
-  Admin: 'Full access',
-};
+import { ROLES } from '../lib/permissions';
 
 export default function AddTeamModal({ onClose, onSave }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Staff');
@@ -23,7 +18,7 @@ export default function AddTeamModal({ onClose, onSave }) {
   async function save() {
     if (!name.trim() || !email.trim()) return;
     if (!EMAIL_RE.test(email.trim())) {
-      setError(`"${email.trim()}" doesn't look like a valid email address.`);
+      setError(t('modals.addTeam.err_email', { email: email.trim() }));
       return;
     }
     setLoading(true);
@@ -47,7 +42,7 @@ export default function AddTeamModal({ onClose, onSave }) {
       onSave?.({ name: name.trim(), email: email.trim(), role });
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to send invite. Please try again.');
+      setError(err.message || t('modals.addTeam.err_failed'));
     } finally {
       setLoading(false);
     }
@@ -55,22 +50,22 @@ export default function AddTeamModal({ onClose, onSave }) {
 
   return (
     <Modal size="md" onClose={onClose}>
-      <ModalHead title="Add team member" eyebrow="Onboarding team" onClose={onClose} />
+      <ModalHead title={t('modals.addTeam.title')} eyebrow={t('modals.addTeam.eyebrow')} onClose={onClose} />
       <div className="modal-body" style={{ background: 'var(--paper-soft)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
           <div className="field">
-            <label>Full name *</label>
-            <input className="input" placeholder="Avery Okonkwo"
+            <label>{t('modals.addTeam.full_name')}</label>
+            <input className="input" placeholder={t('modals.addTeam.name_ph')}
               value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="field">
-            <label>Email *</label>
-            <input className="input" type="email" placeholder="avery@duda.co"
+            <label>{t('modals.addTeam.email')}</label>
+            <input className="input" type="email" placeholder={t('modals.addTeam.email_ph')}
               value={email} onChange={e => setEmail(e.target.value)} />
           </div>
         </div>
         <div className="field" style={{ marginBottom: 18 }}>
-          <label>Role *</label>
+          <label>{t('modals.addTeam.role')}</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {ROLES.map(k => (
               <button key={k} onClick={() => setRole(k)} className="card card-pad"
@@ -79,8 +74,8 @@ export default function AddTeamModal({ onClose, onSave }) {
                   borderColor: role === k ? 'var(--ink)' : 'var(--hairline)',
                   background: role === k ? 'var(--paper)' : 'var(--surface)',
                 }}>
-                <div className="text-sm semibold">{ROLE_LABELS[k]}</div>
-                <div className="muted text-xs" style={{ marginTop: 2 }}>{ROLE_SUBS[k]}</div>
+                <div className="text-sm semibold">{t('teamRoles.' + k, { defaultValue: k })}</div>
+                <div className="muted text-xs" style={{ marginTop: 2 }}>{t('modals.addTeam.sub_' + k, { defaultValue: '' })}</div>
               </button>
             ))}
           </div>
@@ -92,12 +87,12 @@ export default function AddTeamModal({ onClose, onSave }) {
         )}
       </div>
       <div className="modal-foot">
-        <span className="muted text-xs">An invite email will be sent to {email || 'the member'}.</span>
+        <span className="muted text-xs">{t('modals.addTeam.invite_note', { email: email || t('modals.addTeam.invite_fallback') })}</span>
         <div className="flex gap-2">
-          <button className="btn" onClick={onClose} disabled={loading}>Cancel</button>
+          <button className="btn" onClick={onClose} disabled={loading}>{t('common.cancel')}</button>
           <button className="btn primary" onClick={save}
             disabled={!name.trim() || !email.trim() || loading}>
-            {loading ? 'Sending invite…' : 'Send invite'}
+            {loading ? t('modals.addTeam.sending') : t('modals.addTeam.send_invite')}
           </button>
         </div>
       </div>
