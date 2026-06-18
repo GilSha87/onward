@@ -1,7 +1,10 @@
 import React from 'react';
 import StepRow from './StepRow';
+import { sortStepsByDay } from '../../lib/helpers';
 
 export default function PhaseGroup({ phase, steps, onStep, onToggle, dayIn = 0 }) {
+  // Render earliest-day-first within the phase (stable on ties).
+  const ordered = sortStepsByDay(steps);
   const done = steps.filter(s => s.status === 'done').length;
   const pct = steps.length > 0 ? (done / steps.length) * 100 : 0;
   return (
@@ -17,7 +20,7 @@ export default function PhaseGroup({ phase, steps, onStep, onToggle, dayIn = 0 }
           <div className="mini-progress"><div className="fill" style={{ width: `${pct}%` }}></div></div>
         </div>
       </div>
-      {steps.map(s => <StepRow key={s.id} step={s} onClick={() => onStep?.(s)} onToggle={onToggle} dayIn={dayIn} />)}
+      {ordered.map(s => <StepRow key={s.id} step={s} onClick={() => onStep?.(s)} onToggle={onToggle} dayIn={dayIn} />)}
     </div>
   );
 }

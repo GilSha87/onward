@@ -21,12 +21,18 @@ export default function ResourcesPanel({ resources, title, subtitle }) {
       )}
       <div className="resource-grid">
         {shown.map((r, i) => (
-          <div key={i} className="resource-card">
+          // URL-less cards are non-interactive ("Coming soon") — the
+          // resource-card--static modifier removes the hover/pointer affordance
+          // so they don't look clickable.
+          <div key={i} className={`resource-card${r.url ? '' : ' resource-card--static'}`}>
             <div className="rc-type">{r.type}</div>
             {r.url
               ? <a href={r.url} target="_blank" rel="noopener noreferrer">{r.name}</a>
               : <div style={{ fontSize: 13, fontWeight: 600 }}>{r.name}</div>}
             <div className="rc-desc">{r.when}</div>
+            {!r.url && (
+              <span className="rc-soon">Coming soon</span>
+            )}
             {r.internal && (
               <span style={{ fontSize: 10, fontWeight: 600, color: '#8B5E0E', background: 'var(--sun-soft)', padding: '2px 8px', borderRadius: 999, alignSelf: 'flex-start' }}>AM only</span>
             )}

@@ -1236,6 +1236,7 @@ select.input {
 .step-row .owner   { font-size: 12px; color: var(--ink-muted); font-weight: 500; }
 .step-row .due     { font-family: var(--sans); font-size: 12px; color: var(--ink-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 .step-row .due.late { color: var(--crimson); }
+.step-row .due.prekick { color: var(--ink-muted); font-weight: 500; font-style: italic; }
 
 /* ============================================================
    Timeline (Gantt)
@@ -1926,6 +1927,9 @@ select.input {
 .resource-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:12px;}
 .resource-card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r);padding:14px;transition:border-color .15s,box-shadow .15s;display:flex;flex-direction:column;gap:6px;}
 .resource-card:hover{border-color:var(--duda);box-shadow:var(--sh-1);}
+.resource-card--static{cursor:default;}
+.resource-card--static:hover{border-color:var(--hairline);box-shadow:none;}
+.resource-card .rc-soon{font-size:10px;font-weight:600;color:var(--ink-muted);background:var(--paper-soft);border:1px solid var(--hairline);padding:2px 8px;border-radius:999px;align-self:flex-start;}
 .resource-card a{color:var(--duda);font-size:13px;font-weight:600;}
 .resource-card a:hover{text-decoration:underline;}
 .resource-card .rc-type{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;color:var(--ink-muted);}

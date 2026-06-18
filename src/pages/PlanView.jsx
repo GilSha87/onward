@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ICONS, PLAN, QUESTIONS } from '../lib/data';
+import { ICONS, PLAN } from '../lib/data';
 import ClientLogo from '../components/ui/ClientLogo';
+import { db } from '../lib/supabase';
+import { reportApiError } from '../lib/monitoring';
 import { loadMilestones, saveMilestones, groupByPhase, setPlanStatus, PHASES } from '../lib/plan';
 
 const PHASE_GOALS = {
@@ -29,6 +31,23 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [openQuestions, setOpenQuestions] = useState(0);
+
+  // Live open-question count for the Inbox tab badge (same source as the
+  // Tracker inbox), so it never shows a stale mock number.
+  useEffect(() => {
+    let alive = true;
+    db.from('questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', client.id)
+      .eq('status', 'open')
+      .then(({ count, error }) => {
+        if (!alive) return;
+        if (error) { reportApiError('questions.count', error, { clientId: client.id }); return; }
+        setOpenQuestions(count || 0);
+      });
+    return () => { alive = false; };
+  }, [client.id]);
 
   const approved = client.planStatus === 'approved' || client.planStatus === 'locked';
 
@@ -148,7 +167,7 @@ export default function PlanView({ client, editable, onClose, onShare, onReopen 
           <button className="on">{t('tracker.tab_plan')}</button>
           <button onClick={onClose}>{t('tracker.tab_resources')}</button>
           <button onClick={onClose}>
-            {t('tracker.tab_inbox')} {QUESTIONS.filter(q => q.status === 'Open').length > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>}
+            {t('tracker.tab_inbox')} {openQuestions > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{openQuestions}</span>}
           </button>
           <button onClick={onClose}>{t('tracker.tab_files')}</button>
         </div>

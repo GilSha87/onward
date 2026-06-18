@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PHASES, ICONS, ACTIVITY, AM_RESOURCES } from '../lib/data';
+import { PHASES, ICONS, AM_RESOURCES } from '../lib/data';
 import { showToast } from '../components/ui/Toast';
-import { QUESTIONS } from '../lib/data';
+import { db } from '../lib/supabase';
+import { reportApiError } from '../lib/monitoring';
 import ClientLogo from '../components/ui/ClientLogo';
 import StatusBadge from '../components/ui/StatusBadge';
 import Dropdown from '../components/ui/Dropdown';
@@ -13,7 +14,7 @@ import PhaseGroup from '../components/journey/PhaseGroup';
 import Gantt from '../components/journey/Gantt';
 import InboxPanel from './InboxPanel';
 import FilesPanel from '../components/files/FilesPanel';
-import { fmtMoney, arrFromMrr } from '../lib/helpers';
+import { fmtMoney, arrFromMrr, sortStepsByDay } from '../lib/helpers';
 import { usePermissions } from '../hooks/usePermissions';
 
 export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, onToggleStep, onEditClient }) {
@@ -25,6 +26,50 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
   const [tab, setTab] = useState('overview');
   const [addingContact, setAddingContact] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', role: '', email: '' });
+
+  // Live questions for this client. The Inbox tab badge and the InboxPanel
+  // sub-counter both derive from this single source so they stay in sync.
+  const [questions, setQuestions] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    db.from('questions').select('*').eq('client_id', client.id)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) { reportApiError('questions.select', error, { clientId: client.id }); return; }
+        setQuestions(data || []);
+      });
+    return () => { alive = false; };
+  }, [client.id]);
+  const openQuestions = questions.filter(q => q.status === 'open').length;
+
+  // Live activity feed for this client (written by DB triggers on step/file/
+  // question/plan changes). Replaces the old static sample rail.
+  const [activity, setActivity] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    db.from('activity_log').select('*').eq('client_id', client.id)
+      .order('created_at', { ascending: false })
+      .limit(8)
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) { reportApiError('activity.select', error, { clientId: client.id }); return; }
+        setActivity(data || []);
+      });
+    return () => { alive = false; };
+  }, [client.id]);
+  const fmtActivityWhen = iso => {
+    if (!iso) return '';
+    const then = new Date(iso).getTime();
+    if (isNaN(then)) return '';
+    const mins = Math.round((Date.now() - then) / 60000);
+    if (mins < 1) return t('tracker.activity_now', { defaultValue: 'just now' });
+    if (mins < 60) return t('tracker.activity_mins', { count: mins, defaultValue: `${mins}m ago` });
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return t('tracker.activity_hrs', { count: hrs, defaultValue: `${hrs}h ago` });
+    try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+    catch { return ''; }
+  };
 
   const stepCounts = {};
   PHASES.forEach(p => {
@@ -106,7 +151,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
         <button onClick={() => onPlanEdit(client.id)}>{t('tracker.tab_plan')}</button>
         <button className={tab === 'resources' ? 'on' : ''} onClick={() => setTab('resources')}>{t('tracker.tab_resources')}</button>
         <button className={tab === 'inbox' ? 'on' : ''} onClick={() => setTab('inbox')}>
-          {t('tracker.tab_inbox')} {QUESTIONS.filter(q => q.status === 'Open').length > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{QUESTIONS.filter(q => q.status === 'Open').length}</span>}
+          {t('tracker.tab_inbox')} {openQuestions > 0 && <span className="count" style={{ background: 'var(--duda-soft)', color: 'var(--duda-deep)' }}>{openQuestions}</span>}
         </button>
         <button className={tab === 'files' ? 'on' : ''} onClick={() => setTab('files')}>{t('tracker.tab_files')}</button>
       </div>
@@ -125,7 +170,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             <div className="rail-card">
               <h4>{t('tracker.up_next')}</h4>
               <div className="flex flex-col gap-3">
-                {steps.filter(s => s.status !== 'done' && s.status !== 'skip').slice(0, 3).map(s => (
+                {sortStepsByDay(steps.filter(s => s.status !== 'done' && s.status !== 'skip')).slice(0, 3).map(s => (
                   <div key={s.id} style={{ borderBottom: '1px solid var(--hairline-soft)', paddingBottom: 12 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{s.title}</div>
                     <div className="muted text-xs" style={{ marginTop: 3 }}>{t('tracker.day_owner', { day: s.due, owner: ownerLabel(s.owner) })}</div>
@@ -186,16 +231,17 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
             <div className="rail-card">
               <div className="flex items-center" style={{ marginBottom: 10 }}>
                 <h4 style={{ flex: 1, margin: 0 }}>{t('tracker.activity')}</h4>
-                <span className="eyebrow" style={{ fontSize: 10, opacity: 0.5 }}>{t('tracker.sample')}</span>
               </div>
-              {ACTIVITY.slice(0, 5).map((a, i) => (
-                <div key={i} className="activity-item">
-                  <b>{a.who}</b> {a.what} <b>{a.target}</b>
-                  {a.from && a.to && <><span className="change-chip from">{a.from}</span><span className="change-arr">→</span><span className="change-chip to">{a.to}</span></>}
-                  {a.quote && <q>"{a.quote}"</q>}
-                  <time>{a.when}</time>
-                </div>
-              ))}
+              {activity.length === 0 ? (
+                <p className="muted text-sm">{t('tracker.activity_empty', { defaultValue: 'No activity yet.' })}</p>
+              ) : (
+                activity.map(a => (
+                  <div key={a.id} className="activity-item">
+                    {a.summary}
+                    <time>{fmtActivityWhen(a.created_at)}</time>
+                  </div>
+                ))
+              )}
             </div>
           </aside>
         </div>
@@ -222,7 +268,7 @@ export default function Tracker({ client, steps, setScreen, onPlanEdit, onStep, 
 
       {tab === 'resources' && <ResourcesPanel resources={AM_RESOURCES} title={t('tracker.am_resources_title')} subtitle={t('tracker.am_resources_sub')} />}
 
-      {tab === 'inbox' && <InboxPanel onStep={onStep} />}
+      {tab === 'inbox' && <InboxPanel onStep={onStep} questions={questions} setQuestions={setQuestions} steps={steps} />}
 
       {tab === 'files' && <FilesPanel client={client} />}
     </main>

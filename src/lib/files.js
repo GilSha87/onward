@@ -17,6 +17,20 @@ export const FILE_TYPES = [
   'Other',
 ];
 
+// Allowed upload formats: PDF, Office docs, and images. Used both for the file
+// picker's `accept` hint and as an enforced client-side gate (the `accept`
+// attribute alone is bypassable).
+export const ALLOWED_EXTENSIONS = [
+  'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'gif', 'webp',
+];
+export const ACCEPT_ATTR = ALLOWED_EXTENSIONS.map(e => `.${e}`).join(',');
+
+export function isAllowedFile(file) {
+  if (!file) return false;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  return ALLOWED_EXTENSIONS.includes(ext);
+}
+
 const isDemo = () => !import.meta.env.VITE_SUPABASE_URL;
 
 // Map a DB row to the app's file shape (camelCase).
@@ -61,6 +75,9 @@ export async function uploadFile({ clientId, file, title, fileType }) {
   }
   if (file.size > MAX_FILE_BYTES) {
     throw new Error('File exceeds the 25 MB limit.');
+  }
+  if (!isAllowedFile(file)) {
+    throw new Error('Unsupported file type. Use PDF, Office documents, or images.');
   }
 
   const { data: userData, error: userErr } = await db.auth.getUser();

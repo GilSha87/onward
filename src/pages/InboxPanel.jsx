@@ -1,43 +1,59 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { QUESTIONS } from '../lib/data';
+import { db } from '../lib/supabase';
+import { reportApiError } from '../lib/monitoring';
+import { showToast } from '../components/ui/Toast';
 
-export default function InboxPanel({ onStep }) {
-  const { t } = useTranslation();
+// Live client questions inbox. Questions/replies are owned by the parent
+// (Tracker) so the Inbox tab badge and this panel's sub-counter derive from the
+// same `questions` source. Respond appends a persisted reply; Mark resolved
+// flips status to 'resolved'. Both are optimistic with revert on failure.
+export default function InboxPanel({ onStep, questions = [], setQuestions, steps = [] }) {
+  const { t, i18n } = useTranslation();
   const [sub, setSub] = useState('questions');
-  const [questions, setQuestions] = useState(() => QUESTIONS.map(q => ({ ...q, replies: q.replies || [] })));
   const [respondingTo, setRespondingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
 
-  const openCount = questions.filter(q => q.status === 'Open').length;
+  const openCount = questions.filter(q => q.status === 'open').length;
+  const stepTitle = id => steps.find(s => s.id === id)?.title;
+  const fmtWhen = iso => {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString(i18n.language || undefined, { month: 'short', day: 'numeric' }); }
+    catch { return ''; }
+  };
 
-  function startReply(id) {
-    setRespondingTo(id);
-    setReplyText('');
-  }
+  function startReply(id) { setRespondingTo(id); setReplyText(''); }
+  function cancelReply() { setRespondingTo(null); setReplyText(''); }
 
-  function cancelReply() {
-    setRespondingTo(null);
-    setReplyText('');
-  }
-
-  function submitReply(id) {
+  // Respond: append a persisted reply (does not resolve — that's a separate action).
+  async function submitReply(id) {
     const text = replyText.trim();
     if (!text) return;
-    setQuestions(prev =>
-      prev.map(q =>
-        q.id === id
-          ? { ...q, status: 'Resolved', replies: [...(q.replies || []), { from: t('inbox.you'), text, when: t('inbox.just_now') }] }
-          : q
-      )
-    );
+    const q = questions.find(x => x.id === id);
+    if (!q) return;
+    const newReplies = [...(q.replies || []), { author: t('inbox.you'), body: text, at: new Date().toISOString() }];
+    setQuestions(prev => prev.map(x => (x.id === id ? { ...x, replies: newReplies } : x)));
     setRespondingTo(null);
     setReplyText('');
+    const { error } = await db.from('questions').update({ replies: newReplies }).eq('id', id);
+    if (error) {
+      reportApiError('questions.reply', error, { id });
+      showToast(t('inbox.reply_failed', { defaultValue: 'Failed to send reply.' }), 'error');
+      setQuestions(prev => prev.map(x => (x.id === id ? q : x))); // revert
+    }
   }
 
-  function markResolved(id) {
-    setQuestions(prev => prev.map(q => (q.id === id ? { ...q, status: 'Resolved' } : q)));
+  async function markResolved(id) {
+    const q = questions.find(x => x.id === id);
+    if (!q) return;
+    setQuestions(prev => prev.map(x => (x.id === id ? { ...x, status: 'resolved' } : x)));
     if (respondingTo === id) cancelReply();
+    const { error } = await db.from('questions').update({ status: 'resolved' }).eq('id', id);
+    if (error) {
+      reportApiError('questions.resolve', error, { id });
+      showToast(t('inbox.resolve_failed', { defaultValue: 'Failed to resolve question.' }), 'error');
+      setQuestions(prev => prev.map(x => (x.id === id ? q : x))); // revert
+    }
   }
 
   return (
@@ -47,27 +63,32 @@ export default function InboxPanel({ onStep }) {
           <button className={sub === 'questions' ? 'on' : ''} onClick={() => setSub('questions')}>{t('inbox.questions_tab', { count: openCount })}</button>
           <button className={sub === 'notes' ? 'on' : ''} onClick={() => setSub('notes')}>{t('inbox.notes_tab')}</button>
         </div>
-        {sub === 'questions' && (
-          <div className="eyebrow" style={{ fontSize: 10, opacity: 0.5, marginBottom: 12 }}>{t('inbox.sample_note')}</div>
+        {sub === 'questions' && questions.length === 0 && (
+          <div className="card card-pad" style={{ textAlign: 'center', color: 'var(--ink-muted)' }}>
+            {t('inbox.empty', { defaultValue: 'No questions yet.' })}
+          </div>
         )}
-        {sub === 'questions' && questions.map(q => (
+        {sub === 'questions' && questions.map(q => {
+          const isOpen = q.status === 'open';
+          const onStepTitle = stepTitle(q.step_id);
+          return (
           <div key={q.id} className="card card-pad" style={{ marginBottom: 16 }}>
             <div className="flex items-center gap-3" style={{ marginBottom: 10 }}>
-              <span className="tag" style={{ background: q.status === 'Open' ? 'var(--duda-soft)' : undefined, color: q.status === 'Open' ? 'var(--duda-deep)' : undefined, borderColor: 'transparent' }}>{q.status === 'Open' ? t('inbox.status_open') : t('inbox.status_resolved')}</span>
-              <span className="muted text-sm">{t('inbox.on_step')} <b style={{ color: 'var(--ink)' }}>{q.step}</b></span>
-              <span className="muted text-xs num" style={{ marginLeft: 'auto' }}>{q.when}</span>
+              <span className="tag" style={{ background: isOpen ? 'var(--duda-soft)' : undefined, color: isOpen ? 'var(--duda-deep)' : undefined, borderColor: 'transparent' }}>{isOpen ? t('inbox.status_open') : t('inbox.status_resolved')}</span>
+              {onStepTitle && <span className="muted text-sm">{t('inbox.on_step')} <b style={{ color: 'var(--ink)' }}>{onStepTitle}</b></span>}
+              <span className="muted text-xs num" style={{ marginLeft: 'auto' }}>{fmtWhen(q.created_at)}</span>
             </div>
             <div className="flex gap-3 items-start">
-              <span className="avatar" style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hairline)', width: 28, height: 28 }}>{q.from.split(' ').map(n => n[0]).join('')}</span>
+              <span className="avatar" style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hairline)', width: 28, height: 28 }}>{(q.author || '').split(' ').map(n => n[0]).join('')}</span>
               <div style={{ flex: 1 }}>
-                <div className="text-sm semibold">{q.from}</div>
-                <p style={{ marginTop: 6, fontSize: 15, lineHeight: 1.5, color: 'var(--ink-2)' }}>"{q.text}"</p>
+                <div className="text-sm semibold">{q.author}</div>
+                <p style={{ marginTop: 6, fontSize: 15, lineHeight: 1.5, color: 'var(--ink-2)' }}>"{q.body}"</p>
                 {q.replies && q.replies.length > 0 && (
                   <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: '2px solid var(--hairline)' }}>
                     {q.replies.map((r, ri) => (
                       <div key={ri} style={{ marginTop: ri === 0 ? 0 : 10 }}>
-                        <div className="text-xs semibold">{r.from} <span className="muted num" style={{ fontWeight: 400 }}>· {r.when}</span></div>
-                        <p style={{ marginTop: 3, fontSize: 14, lineHeight: 1.45, color: 'var(--ink-2)' }}>{r.text}</p>
+                        <div className="text-xs semibold">{r.author} <span className="muted num" style={{ fontWeight: 400 }}>· {fmtWhen(r.at)}</span></div>
+                        <p style={{ marginTop: 3, fontSize: 14, lineHeight: 1.45, color: 'var(--ink-2)' }}>{r.body}</p>
                       </div>
                     ))}
                   </div>
@@ -88,7 +109,7 @@ export default function InboxPanel({ onStep }) {
                     </div>
                   </div>
                 )}
-                {q.status === 'Open' && respondingTo !== q.id && (
+                {isOpen && respondingTo !== q.id && (
                   <div className="flex gap-2" style={{ marginTop: 14 }}>
                     <button className="btn primary sm" onClick={() => startReply(q.id)}>{t('inbox.respond')}</button>
                     <button className="btn sm" onClick={() => markResolved(q.id)}>{t('inbox.mark_resolved')}</button>
@@ -97,7 +118,8 @@ export default function InboxPanel({ onStep }) {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         {sub === 'notes' && (
           <div className="card card-pad">
             <div className="eyebrow">{t('inbox.am_internal')}</div>

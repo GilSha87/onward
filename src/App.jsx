@@ -7,7 +7,9 @@ import { reportApiError } from './lib/monitoring';
 import ToastProvider, { showToast } from './components/ui/Toast';
 import { TweaksPanel, TweakSection, TweakToggle, TweakRadio, TweakColor, TweakSelect, useTweaks } from './components/TweaksPanel';
 import { PermissionsProvider } from './hooks/usePermissions';
+import { RoleSimulationProvider, useRoleSimulation } from './lib/RoleSimulationContext';
 import Topbar from './components/layout/Topbar';
+import SimulationBanner from './components/SimulationBanner';
 import Dashboard from './pages/Dashboard';
 import Tracker from './pages/Tracker';
 import PlanView from './pages/PlanView';
@@ -89,6 +91,14 @@ function hashToScreen(hash) {
 
 const DEV = import.meta.env.DEV;
 
+// Feeds the simulated `effectiveRole` into the existing permission layer. For
+// non-super-admins, effectiveRole always equals their real role, so the entire
+// gating system is byte-for-byte unchanged for them.
+function SimulatedPermissions({ children }) {
+  const { effectiveRole } = useRoleSimulation();
+  return <PermissionsProvider role={effectiveRole}>{children}</PermissionsProvider>;
+}
+
 export default function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   // In production, always require a real Supabase session. The showLogin tweak
@@ -116,7 +126,7 @@ export default function App() {
   const [stepsByClient, setStepsByClient] = useState({});
   const [team, setTeam] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
-  const [currentUser, setCurrentUser] = useState({ id: null, name: '', initials: '—', role: null });
+  const [currentUser, setCurrentUser] = useState({ id: null, name: '', initials: '—', role: null, is_super_admin: false });
   const [roleResolved, setRoleResolved] = useState(false);
   const [loadingClients, setLoadingClients] = useState(true);
   const [apiNotice, setApiNotice] = useState(null);
@@ -160,14 +170,31 @@ export default function App() {
   }
   useEffect(() => {
     if (!authed) return;
-    db.from('clients').select('*').then(({ data, error }) => {
-      if (error) {
-        handleClientsError(error);
-      } else if (data && data.length > 0) {
-        setClients(data.map(dbRowToClient));
-      } else {
-        setClients([]);
+    // Load clients and a lightweight step aggregate together. progress_done is
+    // denormalized on clients and isn't rewritten on every step toggle, so it
+    // drifts. Recompute progress live from steps here so the portfolio's
+    // X/total matches each client's detail count on a cold load.
+    Promise.all([
+      db.from('clients').select('*'),
+      db.from('steps').select('client_id, status'),
+    ]).then(([clientsRes, stepsRes]) => {
+      if (clientsRes.error) { handleClientsError(clientsRes.error); return; }
+      const rows = (clientsRes.data && clientsRes.data.length > 0)
+        ? clientsRes.data.map(dbRowToClient)
+        : [];
+      if (!stepsRes.error && stepsRes.data) {
+        const agg = {};
+        stepsRes.data.forEach(s => {
+          const a = agg[s.client_id] || (agg[s.client_id] = { done: 0, total: 0 });
+          a.total += 1;
+          if (s.status === 'done') a.done += 1;
+        });
+        rows.forEach(c => {
+          const a = agg[c.id];
+          if (a) c.progress = { done: a.done, total: a.total };
+        });
       }
+      setClients(rows);
     }).catch(handleClientsError).finally(() => setLoadingClients(false));
   }, [authed]);
 
@@ -189,18 +216,21 @@ export default function App() {
         // do NOT fall back to user_metadata.role, which can disagree (e.g. an
         // old invite said Executive) and cause the view to flip.
         let role = null;
+        // is_super_admin is an orthogonal capability flag (UI role-simulation
+        // only). It never widens server-side access; RLS ignores it entirely.
         const { data } = await db.from('team_members')
-          .select('role')
+          .select('role, is_super_admin')
           .eq('user_id', uid)
           .order('role', { ascending: true })
           .limit(1)
           .maybeSingle();
         role = data?.role || null;
+        const isSuperAdmin = !!data?.is_super_admin;
         if (!role) {
           const { count } = await db.from('team_members').select('id', { count: 'exact', head: true });
           role = count && count > 0 ? 'Staff' : 'Admin';
         }
-        if (alive) setCurrentUser(prev => ({ ...prev, role }));
+        if (alive) setCurrentUser(prev => ({ ...prev, role, is_super_admin: isSuperAdmin }));
       } catch {
         // On failure, fall back to least privilege so the UI still resolves.
         if (alive) setCurrentUser(prev => ({ ...prev, role: prev.role || 'Staff' }));
@@ -543,8 +573,10 @@ export default function App() {
   const clientSteps = client ? (stepsByClient[client.id] || []) : [];
 
   return (
-    <PermissionsProvider role={currentUser.role}>
+    <RoleSimulationProvider realRole={currentUser.role} isSuperAdmin={currentUser.is_super_admin}>
+      <SimulatedPermissions>
       <ToastProvider />
+      <SimulationBanner />
       {apiNotice && (
         <div
           role="status"
@@ -767,6 +799,7 @@ export default function App() {
         </TweakSection>
       </TweaksPanel>
       )}
-    </PermissionsProvider>
+      </SimulatedPermissions>
+    </RoleSimulationProvider>
   );
 }

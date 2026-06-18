@@ -31,6 +31,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
   const [flowFilter, setFlowFilter] = useState('All');
   const [amFilter, setAmFilter] = useState('All');
   const [showArchived, setShowArchived] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   const searchRef = useRef(null);
   React.useEffect(() => {
@@ -43,7 +44,16 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const base = clients.filter(c => c.status !== 'deleted' && (showArchived || c.status !== 'archived'));
+  // Demo/test accounts are hidden (and excluded from every KPI) unless the
+  // "Show demo accounts" toggle is on. All counts below derive from
+  // visibleClients so the toggle consistently affects tiles, tabs, and the list.
+  const demoCount = clients.filter(c => c.isDemo).length;
+  const visibleClients = useMemo(
+    () => clients.filter(c => showDemo || !c.isDemo),
+    [clients, showDemo]
+  );
+
+  const base = visibleClients.filter(c => c.status !== 'deleted' && (showArchived || c.status !== 'archived'));
 
   // baseWithSearchOnly: all filters except the tab — used to compute per-tab counts
   const baseWithSearchOnly = useMemo(() => {
@@ -93,14 +103,14 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
     inSetup: base.filter(c => c.phase === 'p2' || c.phase === 'p1').length,
     launching: base.filter(c => c.phase === 'p3').length,
     overdue: base.filter(c => atRiskReason(c)).length,
-    inactive: clients.filter(c => c.status === 'inactive').length,
-    archived: clients.filter(c => c.status === 'archived').length,
+    inactive: visibleClients.filter(c => c.status === 'inactive').length,
+    archived: visibleClients.filter(c => c.status === 'archived').length,
     portfolioMrr: base.reduce((sum, c) => sum + (Number(c.mrr) || 0), 0),
     mrrCurrency: (base.find(c => c.mrr != null && c.mrr !== '')?.mrrCurrency) || 'USD',
-  }), [base, clients]);
+  }), [base, visibleClients]);
 
   const focusClients = useMemo(() => base.map(c => ({ c, risk: atRiskReason(c) })).filter(x => x.risk).slice(0, 4), [base]);
-  const ams = [...new Set(clients.map(c => c.am))];
+  const ams = [...new Set(visibleClients.map(c => c.am))];
 
   function toggleSort(key) { setSort(s => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }); }
   function clearFilters() { setSearch(''); setIcp('All'); setTouch('All'); setTab('all'); setFlowFilter('All'); setAmFilter('All'); }
@@ -184,6 +194,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
         <div className="right">
           <button className={`btn${showFilters ? ' primary' : ''}`} onClick={() => setShowFilters(f => !f)}>{ICONS.filter} {showFilters ? t('dash.hide_filters') : t('dash.more_filters')}</button>
           {stats.archived > 0 && <button className={`btn sm${showArchived ? ' primary' : ''}`} onClick={() => setShowArchived(v => !v)}>{showArchived ? t('dash.hide_archived') : t('dash.archived_count', { count: stats.archived })}</button>}
+          {demoCount > 0 && <button className={`btn sm${showDemo ? ' primary' : ''}`} onClick={() => setShowDemo(v => !v)}>{showDemo ? 'Hide demo accounts' : `Show demo accounts (${demoCount})`}</button>}
           {canCreate && <button className="btn primary" onClick={onAddClient}>{ICONS.plus} {t('dash.new_client')}</button>}
         </div>
       </section>
@@ -241,6 +252,7 @@ export default function Dashboard({ clients, setScreen, onAddClient, onEditClien
                     <div className="flex items-center gap-2">
                       <div className="client-name">{c.name}</div>
                       {c.status && c.status !== 'active' && <StatusBadge status={c.status} />}
+                      {c.isDemo && <span className="pill" style={{ fontSize: 10, background: '#FFF3E9', color: '#8A3D1E', border: '1px solid #F3D6C2' }}>DEMO</span>}
                     </div>
                     <div className="client-sub">
                       {c.flag} {c.country}{c.contacts?.[0]?.name ? ` · ${c.contacts[0].name}` : ''}

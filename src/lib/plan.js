@@ -39,11 +39,13 @@ export function staticMilestones() {
         detail:    '',
         sortOrder: i,
         isCustom:  false,
-        // demo-only display extras (not stored in the DB schema)
-        done:      !!m.done,
+        // Seed milestones are ALWAYS uncompleted with kickoff-relative day
+        // labels (e.g. "Day 14"). We deliberately drop the demo's `done` flag
+        // and hardcoded `completed` calendar dates so a freshly created client
+        // never shows pre-checked milestones or dates before its kickoff.
+        done:      false,
         owner:     m.owner,
         due:       m.due,
-        completed: m.completed,
       });
     });
   });

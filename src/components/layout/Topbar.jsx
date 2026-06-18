@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ICONS } from '../../lib/data';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
+import RoleSwitcher from '../RoleSwitcher';
 
 export default function Topbar({ view, setView, screen, setScreen, client, amName = 'Maya Levin', amInitials, onSignOut }) {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export default function Topbar({ view, setView, screen, setScreen, client, amNam
       )}
 
       <button className="btn ghost" onClick={() => setScreen({ kind: 'team' })}>{t('topbar.team')}</button>
+      <RoleSwitcher />
       <LanguageSwitcher />
       <span className="account-chip">
         <span className="avatar">{initials}</span>

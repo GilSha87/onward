@@ -275,19 +275,6 @@ export const PLAN = {
   },
 };
 
-export const ACTIVITY = [
-  { who: 'Maya Levin',     what: 'moved',       target: 'Stakeholder map',         from: 'In progress', to: 'Done',        when: '2h ago'    },
-  { who: 'Adrian Park',   what: 'replied to',  target: 'Discovery questionnaire', quote: 'Final answers attached — sorry for the delay, board prep this week.', when: '5h ago' },
-  { who: 'Maya Levin',    what: 'moved',       target: 'Brand assets handoff',    from: 'Not started', to: 'In progress', when: 'yesterday'  },
-  { who: 'Jules Pham',    what: 'uploaded',    target: 'Logo pack v2',            detail: '3 SVGs · 1 PNG',              when: 'Mon'        },
-  { who: 'Theo Nakamura', what: 'commented on', target: 'CRM integration',        quote: 'HubSpot Enterprise mapping needs platform team review.', when: 'Apr 21' },
-];
-
-export const QUESTIONS = [
-  { id: 'q1', from: 'Adrian Park', step: 'CRM / billing integration', text: 'We use HubSpot Enterprise — can we map deals to sites both ways?', when: 'Apr 22', status: 'Open'     },
-  { id: 'q2', from: 'Jules Pham',  step: 'Brand assets handoff',       text: 'Do you accept Figma files or do we need to export SVGs?',         when: 'Apr 20', status: 'Resolved' },
-];
-
 export const ICONS = {
   search:   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="6" r="4.5"/><path d="M9.5 9.5L13 13"/></svg>,
   plus:     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 1.5v9M1.5 6h9"/></svg>,
@@ -315,16 +302,19 @@ export const ICONS = {
   st_skip:  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 3l4 3-4 3zM6.5 3l4 3-4 3z"/></svg>,
 };
 
+// AM-only resources. `url` is the link the card opens; set it to the real
+// GPT/Dashboard/Notion/doc URL. Entries with url: null render as a
+// non-interactive "Coming soon" card until a link is supplied.
 export const AM_RESOURCES = [
-  { name: 'AE to AM Handover GPT',         type: 'Internal GPT',   stage: 'Pre-kickoff', when: 'Summarize sales context before kickoff',                        internal: true },
-  { name: 'Discovery Questions GPT',        type: 'Internal GPT',   stage: 'Kickoff',     when: 'Generate tailored discovery questions based on ICP',            internal: true },
-  { name: 'Partners Onboarding Dashboard',  type: 'Domo Dashboard', stage: 'Post-launch', when: 'Track feature usage and activation metrics',                    internal: true },
-  { name: 'SaaS Onboarding Process',        type: 'Notion Page',    stage: 'Discovery',   when: 'SaaS flow design, GTM options, UX examples',                    internal: true },
-  { name: 'Flow Router',                    type: 'Checklist',      stage: 'Pre-kickoff', when: 'Choose DIY/DIFM/Hybrid/Migration/Marketplace path',             internal: true },
-  { name: 'Segment Playbooks',              type: 'Internal Deck',  stage: 'Discovery',   when: 'Tailor the onboarding approach to ICP',                         internal: true },
-  { name: 'GTM Review Deck',                type: 'Internal Deck',  stage: 'GTM',         when: 'Partner presents final flow, exec sponsor confirms',             internal: true },
-  { name: 'QA Checklist (pre-pilot)',        type: 'Checklist',      stage: 'Pilot',       when: 'Permissions, data sync, domain, SEO — run before every pilot',  internal: true },
-  { name: 'Migration Planning Checklist',   type: 'Checklist',      stage: 'Launch',      when: 'Legacy portfolio migrations and batch rollout',                  internal: true },
+  { name: 'AE to AM Handover GPT',         type: 'Internal GPT',   stage: 'Pre-kickoff', when: 'Summarize sales context before kickoff',                        internal: true, url: null },
+  { name: 'Discovery Questions GPT',        type: 'Internal GPT',   stage: 'Kickoff',     when: 'Generate tailored discovery questions based on ICP',            internal: true, url: null },
+  { name: 'Partners Onboarding Dashboard',  type: 'Domo Dashboard', stage: 'Post-launch', when: 'Track feature usage and activation metrics',                    internal: true, url: null },
+  { name: 'SaaS Onboarding Process',        type: 'Notion Page',    stage: 'Discovery',   when: 'SaaS flow design, GTM options, UX examples',                    internal: true, url: null },
+  { name: 'Flow Router',                    type: 'Checklist',      stage: 'Pre-kickoff', when: 'Choose DIY/DIFM/Hybrid/Migration/Marketplace path',             internal: true, url: null },
+  { name: 'Segment Playbooks',              type: 'Internal Deck',  stage: 'Discovery',   when: 'Tailor the onboarding approach to ICP',                         internal: true, url: null },
+  { name: 'GTM Review Deck',                type: 'Internal Deck',  stage: 'GTM',         when: 'Partner presents final flow, exec sponsor confirms',             internal: true, url: null },
+  { name: 'QA Checklist (pre-pilot)',        type: 'Checklist',      stage: 'Pilot',       when: 'Permissions, data sync, domain, SEO — run before every pilot',  internal: true, url: null },
+  { name: 'Migration Planning Checklist',   type: 'Checklist',      stage: 'Launch',      when: 'Legacy portfolio migrations and batch rollout',                  internal: true, url: null },
 ];
 
 export const CLIENT_RESOURCES = [

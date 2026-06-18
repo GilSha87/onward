@@ -25,6 +25,7 @@ export function dbRowToClient(row) {
     dayIn:    row.day_in,
     phase:    normalizePhase(row.phase),
     status:   row.status || 'active',
+    isDemo:   !!row.is_demo,
     contacts: row.contacts || [],
     progress: { done: row.progress_done || 0, total: row.progress_total || 20 },
     mrr:         row.mrr_amount ?? null,

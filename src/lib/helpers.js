@@ -82,6 +82,12 @@ export function nextMilestoneForPhase(phaseId) {
   return map[phaseId] || 'Next milestone';
 }
 
+// Order steps within a phase by their day value (the "Day N" due) ascending.
+// Array#sort is stable, so equal days keep their original (creation) order.
+export function sortStepsByDay(steps) {
+  return [...(steps || [])].sort((a, b) => (a.due ?? 0) - (b.due ?? 0));
+}
+
 export const SORTERS = {
   name:     (a, b) => a.name.localeCompare(b.name),
   dayIn:    (a, b) => b.dayIn - a.dayIn,
